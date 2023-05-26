@@ -2,6 +2,7 @@
   "name": "experiment-pathfinder",
   "version": "0.0.1",
   "description": "Having a play with SolidJS and pathfinding algorithms.",
+  "packageManager": "pnpm@8.5.1",
   "scripts": {
     "start": "vite",
     "dev": "vite",
