@@ -1,0 +1,20 @@
+{
+  "name": "experiment-pathfinder",
+  "version": "0.0.1",
+  "description": "Having a play with SolidJS and pathfinding algorithms.",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "5.0.4",
+    "vite": "^4.3.9",
+    "vite-plugin-solid": "^2.7.0"
+  },
+  "dependencies": {
+    "solid-js": "^1.7.5"
+  }
+}
