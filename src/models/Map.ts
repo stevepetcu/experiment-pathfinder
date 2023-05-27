@@ -11,6 +11,7 @@ const LEVEL_ONE_ITERATION_COUNT_THRESHOLD = 10000;
 const LEVEL_TWO_ITERATION_COUNT_THRESHOLD = LEVEL_ONE_ITERATION_COUNT_THRESHOLD * 10;
 const MAGIC_TO_REPLACE_LATER = 333;
 const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
+
 export const generatePlayerStartingPosition = (inRoom: Room): Coords => {
   const x = randomInt(inRoom.leftX(), inRoom.rightX() + 1); // randomInt max is exclusive
   const y = randomInt(inRoom.topY(), inRoom.bottomY() + 1); // randomInt max is exclusive
@@ -44,7 +45,7 @@ export const generateRooms = async (
 
     const randomTopLeft: Coords = {
       x: randomInt(MAP_BORDER_THICKNESS, mapWidth - MAP_BORDER_THICKNESS - roomWidth),
-      y: randomInt(MAP_BORDER_THICKNESS, mapWidth - roomHeight),
+      y: randomInt(MAP_BORDER_THICKNESS, mapWidth - MAP_BORDER_THICKNESS - roomHeight),
     };
 
     const room = getRoom(randomTopLeft, roomWidth, roomHeight);
@@ -102,8 +103,6 @@ const disconnectedRooms = (rooms: Room[]): Room[] => {
 export const generateCorridors = async (rooms: Room[], mapWidth: number): Promise<Corridor[]> => {
   const corridors: Corridor[] = [];
 
-  console.log('line 105');
-
   const comparator = (first: Room, second: Room) => {
     const yDifference = first.topY() - second.topY();
 
@@ -116,8 +115,6 @@ export const generateCorridors = async (rooms: Room[], mapWidth: number): Promis
   corridors.push(...generateCorridorsVerticallyUp(sortedRooms));
 
   if (disconnectedRooms(rooms).length > 0) {
-    console.log('line 119');
-
     // TODO: use disconnectedRooms(sortedRooms)??
     const disconnectedNodes = rooms.filter(it => it.connectedRooms.length === 0);
 
@@ -134,8 +131,6 @@ export const generateCorridors = async (rooms: Room[], mapWidth: number): Promis
     ));
 
     if (disconnectedRooms(rooms).length > 0) {
-      console.log('line 137');
-
       // TODO: did I mean to do disconnectedRooms(disconnectedNodes) here??
       const disconnectedLeaves = rooms.filter(it => it.connectedRooms.length === 1);
 
@@ -163,9 +158,8 @@ export const generateCorridors = async (rooms: Room[], mapWidth: number): Promis
   for (let i = 0; i < rooms.length; i++) {
     // TODO: use sorted rooms?
     const currentRoom = rooms[i];
-    console.log('line 166');
+
     if (currentRoom.connectedRooms.length > 2) {
-      console.log('line 168');
       currentRoom.connectedRooms.sort(
         // Sort desc based on corridor length b/c longer corridors get removed first.
         (first, second) => second.corridor.length() - first.corridor.length(),
@@ -184,13 +178,13 @@ export const generateCorridors = async (rooms: Room[], mapWidth: number): Promis
 
         if (rng < CORRIDOR_REMOVAL_BASE_CHANCE * connectedCorridor.length()) {
           connectedRoom.disconnectFrom(currentRoom);
-          currentRoom.connectedRooms.splice(i, 1); // TODO: use disconnect from and also move the above into it, to disconnect both sides?
-          j--; // Decrement j because we spliced.
+          currentRoom.connectedRooms.splice(j, 1); // TODO: use disconnect from and also move the above into it, to disconnect both sides?
           if (disconnectedRooms(rooms).length > 0) {
             // Removing this corridor resulted in a disconnected graph. Undoing…
-            currentRoom.connectedRooms.push(currentConnection);
+            currentRoom.connectedRooms.splice(j, 0,currentConnection);
             connectedRoom.connectTo(currentRoom, connectedCorridor);
           } else {
+            j--; // Decrement j because we spliced earlier.
             const corridorIndex = corridors.findIndex(it => it.id === connectedCorridor.id);
             corridors.splice(corridorIndex, 1);
           }
@@ -201,8 +195,6 @@ export const generateCorridors = async (rooms: Room[], mapWidth: number): Promis
   /**
    * End: Reduce the number of corridors.
    */
-
-  console.log('line 205');
 
   return corridors;
 };
