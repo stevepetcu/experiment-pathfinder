@@ -162,5 +162,5 @@ export const getEmptyGrid = (): Grid => {
   const placeRooms = async () => false;
   const placeCorridors = async () => false;
 
-  return {gridCells: [], placeRooms, placeCorridors};
+  return {gridCells: [[]], placeRooms, placeCorridors};
 };

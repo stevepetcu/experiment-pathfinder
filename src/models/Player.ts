@@ -1,4 +1,9 @@
+export interface Player {
+  x: number;
+  y: number;
+}
 export const getPlayer = (startingX: number, startingY: number) => {
-  const xCoord = startingX;
-  const yCoord = startingY;
+  const _this = {x: startingX, y: startingY};
+
+  return _this;
 };
