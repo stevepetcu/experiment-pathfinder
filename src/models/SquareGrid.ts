@@ -20,9 +20,11 @@ export interface GridCell {
 }
 
 export interface Grid {
-  gridCells: GridCell[][];
+  cells: GridCell[][];
   placeRooms: (rooms: Room[]) => Promise<boolean>;
   placeCorridors: (corridors: Corridor[]) => Promise<boolean>;
+  setStatusForCellAt: (status: CellStatus, x: number, y: number) => GridCell;
+  getCellAt: (x: number, y: number) => GridCell;
 }
 
 const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id']) => {
@@ -37,7 +39,7 @@ const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id'
 };
 
 export const getSquareGrid = async (width: number): Promise<Grid> => {
-  const gridCells: GridCell[][] = [];
+  const cells: GridCell[][] = [];
 
   // Fill with obstacles. TODO: optimise with room placing
   for (let y = 0; y < width; y++) {
@@ -49,31 +51,24 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
       row.push(newCell);
     }
 
-    gridCells.push(row);
+    cells.push(row);
   }
 
-  const isCellAccessible = (cell: GridCell): boolean => {
-    // TODO: simply use GridCell::isEmpty()? I can't remember why I implemented the fn like this way back.
-    // return CellStatus.OUT_OF_BOUNDS !== cell.status
-    //   && cell.x < width
-    //   && cell.y < width
-    //   && _this.gridCells[cell.y][cell.x].isEmpty();
-
-    return _this.gridCells[cell.y][cell.x].isEmpty();
-  };
-
-  const setCellStatusAt = (x: number, y: number, status: CellStatus): void => {
-    _this.gridCells[y][x].status = status;
+  const setStatusForCellAt = (status: CellStatus, x: number, y: number): GridCell => {
+    const cell = _this.cells[y][x];
+    cell.status = status;
     if (CellStatus.VISITED === status) {
       setTimeout(() => {
-        _this.gridCells[y][x].status = CellStatus.EMPTY;
+        cell.status = CellStatus.EMPTY;
       }, 1000);
     }
+
+    return cell;
   };
 
   const getCellAt = (x: number, y: number): GridCell => {
-    if (_this.gridCells[y] && _this.gridCells[y][x]) {
-      return _this.gridCells[y][x];
+    if (_this.cells[y] && _this.cells[y][x]) {
+      return _this.cells[y][x];
     }
 
     return getCell(x, y, CellStatus.OUT_OF_BOUNDS);
@@ -92,8 +87,8 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
         for (let roomX = roomCoords.x; roomX < (roomCoords.x + roomWidth); roomX++) {
           const cell = getCellAt(roomX, roomY);
           if (cell.status !== CellStatus.OUT_OF_BOUNDS) {
-            _this.gridCells[roomY][roomX].status = CellStatus.EMPTY;
-            _this.gridCells[roomY][roomX].roomId = room.roomDto.id;
+            _this.cells[roomY][roomX].status = CellStatus.EMPTY;
+            _this.cells[roomY][roomX].roomId = room.roomDto.id;
           } else {
             console.debug('Tried to place empty cell at: ', cell);
           }
@@ -119,8 +114,8 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
         while (currentX < corridor.endCoords.x) {
           const currentCell = getCellAt(currentX, currentY);
           if (currentCell.status !== CellStatus.OUT_OF_BOUNDS) {
-            _this.gridCells[currentY][currentX].status = CellStatus.EMPTY;
-            _this.gridCells[currentY][currentX].roomId = corridor.id;
+            _this.cells[currentY][currentX].status = CellStatus.EMPTY;
+            _this.cells[currentY][currentX].roomId = corridor.id;
           } else {
             console.debug('Tried to place empty cell at: ', currentCell);
           }
@@ -139,8 +134,8 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
         while (currentY > corridor.endCoords.y) {
           const currentCell = getCellAt(currentX, currentY);
           if (currentCell.status !== CellStatus.OUT_OF_BOUNDS) {
-            _this.gridCells[currentY][currentX].status = CellStatus.EMPTY;
-            _this.gridCells[currentY][currentX].roomId = corridor.id;
+            _this.cells[currentY][currentX].status = CellStatus.EMPTY;
+            _this.cells[currentY][currentX].roomId = corridor.id;
           } else {
             console.debug('Tried to place empty cell at: ', currentCell);
           }
@@ -153,7 +148,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     return true;
   };
 
-  const _this = {gridCells, placeRooms, placeCorridors};
+  const _this = {cells, placeRooms, placeCorridors, setStatusForCellAt, getCellAt};
 
   return _this;
 };
@@ -162,5 +157,10 @@ export const getEmptyGrid = (): Grid => {
   const placeRooms = async () => false;
   const placeCorridors = async () => false;
 
-  return {gridCells: [[]], placeRooms, placeCorridors};
+  const setStatusForCellAt = (status: CellStatus, x: Coords['x'], y: Coords['y']) =>
+    getCell(x, y, CellStatus.OUT_OF_BOUNDS);
+
+  const getCellAt = (x: number, y: number): GridCell => getCell(x, y, CellStatus.OUT_OF_BOUNDS);
+
+  return {cells: [[]], placeRooms, placeCorridors, setStatusForCellAt, getCellAt};
 };
