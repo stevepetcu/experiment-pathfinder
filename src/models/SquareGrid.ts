@@ -60,7 +60,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     if (CellStatus.VISITED === status) {
       setTimeout(() => {
         cell.status = CellStatus.EMPTY;
-      }, 1000);
+      }, 5000);
     }
 
     return cell;

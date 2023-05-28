@@ -14,11 +14,11 @@ interface GridMapSquareProps {
 }
 
 export default function GridMapSquare(props: GridMapSquareProps) {
-  const CELL_WIDTH = 35;
+  const CELL_WIDTH = 20;
   const CELL_BORDER_WIDTH = 0.25;
 
   // TODO: pass in from some text fields in the parent. Figure out the default values SolidJS style.
-  const mapWidth = props.width || 25;
+  const mapWidth = props.width || 75;
   const minRoomWidth = props.width || 4;
   const maxRoomWidth = props.width || 8;
 
@@ -82,26 +82,33 @@ export default function GridMapSquare(props: GridMapSquareProps) {
   });
 
   const movePlayerToCell = async (cell: GridCell) => {
-    setClicked(true);
     // TODO: remove this atrocity once I've figured out why the heck the grid isn't updating:
-    setInterval(() => setClicked(!clicked()), 10);
+    setClicked(true);
+    const atrocity = setInterval(() => setClicked(!clicked()), 10);
     pathfinder().reset();
 
-    if (!canMove()) {
-      return;
+    if (isPlayerMoving()) {
+      // TODO: stop player from moving in the initial direction.
+      player().isChangingDirection = true;
+      setIsPlayerMoving(false);
     }
 
-    setCanMove(false);
-    setTimeout(() => setCanMove(true), 25); // Prevent setting move targets instantly after each other.
+    // TODO: re-enable after I fix the double slit experiment going on here.
+    // if (!canMove()) {
+    //   return;
+    // }
+    //
+    // setCanMove(false);
+    // // Prevent setting move targets instantly after each other.
+    // setTimeout(() => setCanMove(true), 25);
 
     const path = pathfinder().tracePath(grid().getCellAt(player().x, player().y), cell);
 
     if (path.length) {
-      if (isPlayerMoving()) {
-        // TODO: stop player from moving in the initial direction.
-      }
       setIsPlayerMoving(true);
-      await player().takePath(path);
+      const dt = Date.now();
+      await player().takePath(path, true);
+      console.log(`Moved player in ${Date.now() - dt}ms.`);
       setIsPlayerMoving(false);
       setGridCells(player().grid.cells);
       setClicked(false);
@@ -113,6 +120,9 @@ export default function GridMapSquare(props: GridMapSquareProps) {
         setClicked(false);
       }, 1000);
     }
+
+    // TODO: other end of the atrocity to clean up.
+    setTimeout(() => clearInterval(atrocity), 10000);
   };
 
   createEffect(() => {
@@ -139,7 +149,7 @@ export default function GridMapSquare(props: GridMapSquareProps) {
             width: `${CELL_WIDTH}px`,
             height: `${CELL_WIDTH}px`,
             'box-shadow': `inset 0 0 0 ${CELL_BORDER_WIDTH}px rgb(250 204 21)`,
-            transition: 'all 500ms',
+            // transition: 'all 500ms',
           }}
           class={'rounded-sm flex items-center justify-center hover:brightness-125 cursor-pointer'}
           classList={{
@@ -149,7 +159,10 @@ export default function GridMapSquare(props: GridMapSquareProps) {
             'bg-teal-500': grid().cells[cell.y][cell.x].status === CellStatus.VISITED,
             'bg-red-500': unreachableCell() === cell,
           }}
-        ><small class={'text-xs'}>{cell.x},{cell.y}</small></div>
+        >
+          {/*TODO: add a "debugMode" variable to enable this thing, maybe other debugging stuff as well.*/}
+          {/*<small class={'text-xs'}>{cell.x},{cell.y}</small>*/}
+        </div>
       }</For>
     </div>
   }</For>;

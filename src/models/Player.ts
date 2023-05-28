@@ -4,8 +4,9 @@ import {CellStatus, Grid, GridCell} from './SquareGrid';
 export interface Player {
   x: Coords['x'];
   y: Coords['y'];
-  takePath: (path: GridCell[]) => void;
-  grid: Grid
+  takePath: (path: GridCell[], isChangingDirection: boolean) => void;
+  grid: Grid;
+  isChangingDirection: boolean;
 }
 export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
   const moveToCoords = (x: number, y:number) => {
@@ -21,7 +22,15 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
     return _this.x === cell.x && _this.y === cell.y;
   };
 
-  const takePath = async (path: GridCell[]): Promise<void> => {
+  const takePath = async (path: GridCell[], isNewPath: boolean): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 25));
+
+    if (isNewPath) {
+      // TODO: this doesn't work quite right.
+
+      _this.isChangingDirection = false;
+    }
+
     const nextStep = path.pop();
     console.debug('Next step: ', nextStep);
 
@@ -40,11 +49,16 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
       return;
     }
 
+    if (_this.isChangingDirection && !isNewPath) {
+      return;
+    }
+
     // setTimeout(() => {
     moveToCoords(nextStep.x, nextStep.y);
     // Add a pause to make the thing's movement perceptible to puny human eyes.
-    await new Promise(resolve => setTimeout(resolve, 50));
-    await takePath(path);
+    // await new Promise(resolve => setTimeout(resolve, 50));
+
+    await takePath(path, false);
     // }, 50);
   };
 
@@ -53,6 +67,7 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
     y: startingCoords.y,
     takePath,
     grid,
+    isChangingDirection: false,
   };
 
   _this.grid.setStatusForCellAt(CellStatus.PLAYER, startingCoords.x, startingCoords.y);
