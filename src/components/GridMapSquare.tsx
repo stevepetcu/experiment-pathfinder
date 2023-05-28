@@ -3,7 +3,7 @@ import {createEffect, createSignal, For, onMount, Show} from 'solid-js';
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder, PathfinderCell} from '../models/Pathfinder';
-import {getPlayer} from '../models/Player';
+import {DEFAULT_SPEED, getPlayer} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, Grid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
 
@@ -19,8 +19,10 @@ export default function GridMapSquare(props: GridMapSquareProps) {
 
   // TODO: pass in from some text fields in the parent. Figure out the default values SolidJS style.
   const mapWidth = props.width || 75;
-  const minRoomWidth = props.width || 4;
-  const maxRoomWidth = props.width || 8;
+  const minRoomWidth = props.minRoomWidth || 4;
+  const maxRoomWidth = props.maxRoomWidth || 8;
+
+  const playerSpeed = DEFAULT_SPEED;
 
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
   const [hasPlacedRooms, setHasPlacedRooms] = createSignal(false);
@@ -40,12 +42,13 @@ export default function GridMapSquare(props: GridMapSquareProps) {
 
   const [player, setPlayer] = createSignal(getPlayer(emptyGrid, {x: -1, y: -1}));
 
-  const [canMove, setCanMove] = createSignal(true);
   const [clicked, setClicked] = createSignal(false);
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
-  const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
+  // const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
+
+  const [timeToTracePath, setTimeToTracePath] = createSignal<number | null>(null);
 
   onMount(async () => {
     // Create the actual grid:
@@ -83,46 +86,36 @@ export default function GridMapSquare(props: GridMapSquareProps) {
 
   const movePlayerToCell = async (cell: GridCell) => {
     // TODO: remove this atrocity once I've figured out why the heck the grid isn't updating:
-    setClicked(true);
     const atrocity = setInterval(() => setClicked(!clicked()), 10);
+
     pathfinder().reset();
+    //Stop player from moving in the initial direction.
+    player().isChangingDirection = true;
 
-    if (isPlayerMoving()) {
-      // TODO: stop player from moving in the initial direction.
-      player().isChangingDirection = true;
-      setIsPlayerMoving(false);
-    }
-
-    // TODO: re-enable after I fix the double slit experiment going on here.
-    // if (!canMove()) {
-    //   return;
-    // }
-    //
-    // setCanMove(false);
-    // // Prevent setting move targets instantly after each other.
-    // setTimeout(() => setCanMove(true), 25);
-
+    const now = Date.now();
     const path = pathfinder().tracePath(grid().getCellAt(player().x, player().y), cell);
+    setTimeToTracePath(Date.now() - now);
 
     if (path.length) {
-      setIsPlayerMoving(true);
-      const dt = Date.now();
-      await player().takePath(path, true);
-      console.log(`Moved player in ${Date.now() - dt}ms.`);
-      setIsPlayerMoving(false);
+      // setIsPlayerMoving(true);
+      await player().takePath(path, true, playerSpeed);
+      // setIsPlayerMoving(false);
       setGridCells(player().grid.cells);
-      setClicked(false);
     } else {
       setGridCells(player().grid.cells);
       setUnreachableCell(cell);
       setTimeout(() => {
         setUnreachableCell(null);
-        setClicked(false);
       }, 1000);
     }
 
     // TODO: other end of the atrocity to clean up.
-    setTimeout(() => clearInterval(atrocity), 10000);
+    // TODO: might keep the timeout to reset some text, but NEED TO FIX: reset the timeout time for every click
+    //  (at least after the atrocity is cleaned) - or store the timeout reference and clear it at the beginning of each click.
+    setTimeout(() => {
+      setTimeToTracePath(null);
+      clearInterval(atrocity);
+    }, 3000);
   };
 
   createEffect(() => {
@@ -136,6 +129,9 @@ export default function GridMapSquare(props: GridMapSquareProps) {
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h1>;
   const playerJsx = <h1>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h1>;
   const corridorsJsx = <h1>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h1>;
+  const tracePathTimeJsx = <h1>Finished tracing last path in {timeToTracePath()}ms. The player moves at a fixed speed of
+    1 block every {playerSpeed}ms.</h1>;
+
   const cellsJsx = <For each={gridCells()}>{cellRow =>
     <div class={'flex'}>
       <For each={cellRow}>{(cell) =>
@@ -149,7 +145,7 @@ export default function GridMapSquare(props: GridMapSquareProps) {
             width: `${CELL_WIDTH}px`,
             height: `${CELL_WIDTH}px`,
             'box-shadow': `inset 0 0 0 ${CELL_BORDER_WIDTH}px rgb(250 204 21)`,
-            // transition: 'all 500ms',
+            transition: 'all 350ms ease-in-out',
           }}
           class={'rounded-sm flex items-center justify-center hover:brightness-125 cursor-pointer'}
           classList={{
@@ -169,8 +165,7 @@ export default function GridMapSquare(props: GridMapSquareProps) {
 
   // TODO:
   //  1. Use Tailwind classes everywhere.
-  //  2. After fixing the points above, implement the Player and the Pathfinder algorithm.
-  //  3. Implement tests.
+  //  2. Implement tests.
   return (
     <div class={'text-center mt-14'}>
       <Show when={hasPlacedRooms()} fallback={<h1>Generating {mapWidth}x{mapWidth} map…</h1>}>
@@ -181,6 +176,9 @@ export default function GridMapSquare(props: GridMapSquareProps) {
       </Show>
       <Show when={hasPlacedCorridors()} fallback={<h1>Generating corridors…</h1>}>
         {corridorsJsx}
+      </Show>
+      <Show when={timeToTracePath() !== null} fallback={<h1>Waiting for player to move…</h1>}>
+        {tracePathTimeJsx}
       </Show>
       <Show when={gridCells().length > 0} fallback={<h1>Generating cells…</h1>}>
         <div class={'inline-block mt-12'}

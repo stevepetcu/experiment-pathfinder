@@ -1,10 +1,12 @@
 import {Coords} from './Coords';
 import {CellStatus, Grid, GridCell} from './SquareGrid';
 
+export const DEFAULT_SPEED = 50;
+
 export interface Player {
   x: Coords['x'];
   y: Coords['y'];
-  takePath: (path: GridCell[], isChangingDirection: boolean) => void;
+  takePath: (path: GridCell[], isChangingDirection: boolean, speed?: number) => void;
   grid: Grid;
   isChangingDirection: boolean;
 }
@@ -22,12 +24,10 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
     return _this.x === cell.x && _this.y === cell.y;
   };
 
-  const takePath = async (path: GridCell[], isNewPath: boolean): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, 25));
+  const takePath = async (path: GridCell[], isNewPath: boolean, speed = DEFAULT_SPEED): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, speed));
 
     if (isNewPath) {
-      // TODO: this doesn't work quite right.
-
       _this.isChangingDirection = false;
     }
 
@@ -57,6 +57,7 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
     moveToCoords(nextStep.x, nextStep.y);
     // Add a pause to make the thing's movement perceptible to puny human eyes.
     // await new Promise(resolve => setTimeout(resolve, 50));
+
 
     await takePath(path, false);
     // }, 50);
