@@ -132,90 +132,56 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
       (cell) => cell.reset(),
     ));
     _this.heap = binaryHeap(scoreFn);
-    console.log('=====> PATHFINDER: 135');
   };
 
   const getNeighbours = (cell: PathfinderCell, heuristics: Heuristics): PathfinderCell[] => {
-    console.log('CELULA:');
-    console.log(cell.gridCell);
     const neighbourCoords = cell.getNeighbourCoordinates(heuristics);
     const neighbours: PathfinderCell[] = [];
-    console.log('COORDONATE LA VECINI:');
-    console.log(neighbourCoords);
     neighbourCoords.map(nc => {
       if (_this.cells[nc.y][nc.x].isEmpty()) {
         neighbours.push(_this.cells[nc.y][nc.x]);
       }
     });
 
-    console.log('VECINIIIII');
-    console.log(neighbours.map(it => it.gridCell));
     return neighbours;
   };
 
   const tracePath = (from: GridCell, to: GridCell, heuristics = Heuristics.MANHATTAN): GridCell[] => {
-
-    // console.log('line 151');
-    // let openList: PathfinderCell[] = [];
     const start: PathfinderCell = _this.cells[from.y][from.x];
     const end: PathfinderCell = _this.cells[to.y][to.x];
-
-    console.log('===> START: ');
-    console.log(start);
-
-    console.log('====> END:');
-    console.log(end);
 
     _this.heap.push(start);
 
     while (_this.heap.size() > 0) {
-      // console.log('line 159');
       // Grab the lowest f(x) to process next. The heap keeps this sorted for us.
       const currentElement = _this.heap.pop();
 
       // End case -- result has been found, return the traced path.
       if (currentElement === end) {
-        // console.log('line 165');
-        // console.log(currentElement);
         let curr = currentElement;
         const result: PathfinderCell[] = [];
-        // console.log('Gets to the end');
 
-        // while (curr.parent) {
         while (curr.parent && !result.find((cell: PathfinderCell) => cell === curr.parent)) {
-          // console.log('line 171');
           // TODO why is this weird looping behaviour happening? (check against original (improved) algo version)
           result.push(curr);
           curr = curr.parent;
         }
-        // return ret.reverse();
-        // console.log('trace path result: ', ret);
-        console.log('line 177 🎉 RESULTS: ');
+
         return result.map(cell => cell.gridCell);
       }
 
       // Normal case -- move currentElement from open to closed, process each of its neighbours.
-      // console.log('line 185');
       currentElement.closed = true;
 
       // Find all neighbours for the current node. Optionally find diagonal neighbours as well (false by default).
-      // let neighbours = getNeighbours(currentElement, heuristics);
       // TODO: consolidate with the heuristics stuff below (see original (improved) algo version)
       // TODO: Or don't. It seems like this combination of using diagonal heuristics for the path and manhattan for the neighbours works most naturally.
       const neighbours = getNeighbours(currentElement, Heuristics.DIAGONAL);
 
-      // console.log('line 194');
-      // console.log('Neighbours: ');
-      // console.log(neighbours);
-      // neighbours.map((n, i) => console.log('Neighbour', i, 'coords:', n.x, n.y));
-
       for (let i = 0, il = neighbours.length; i < il; i++) {
-        // console.log('line 200');
         const neighbor = neighbours[i];
 
         if (!neighbor.isEmpty()) {
-          // console.log('line 204');
-
           continue;
         }
 
@@ -225,11 +191,7 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
         const gScore = currentElement.g + (currentElement.isEmpty() ? 1 : 50);
         const beenVisited = neighbor.visited;
 
-        // console.log('line 215');
-
         if (!beenVisited || gScore < neighbor.g) {
-          // console.log('line 218');
-
           // Found an optimal (so far) path to this node. Take score for node to see how good it is.
           neighbor.visited = true;
           neighbor.parent = currentElement;
@@ -239,17 +201,9 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
           neighbor.f = neighbor.g + neighbor.h;
 
           if (!beenVisited) {
-            // console.log('line 229');
-
-            // console.log('here 1');
-
             // Pushing to heap will put it in proper place based on the 'f' value.
             _this.heap.push(neighbor);
           } else {
-            // console.log('line 236');
-
-            // console.log('here 2');
-
             // Already seen the node, but since it has been rescored we need to reorder it in the heap
             _this.heap.rescore(neighbor);
           }
@@ -258,8 +212,6 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
     }
 
     // No result was found - empty array signifies failure to find path.
-    // console.log('line 228');
-
     return [];
   };
 

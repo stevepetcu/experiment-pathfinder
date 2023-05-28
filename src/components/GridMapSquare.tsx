@@ -14,7 +14,7 @@ interface GridMapSquareProps {
 }
 
 export default function GridMapSquare(props: GridMapSquareProps) {
-  const CELL_WIDTH = 30;
+  const CELL_WIDTH = 35;
   const CELL_BORDER_WIDTH = 0.25;
 
   // TODO: pass in from some text fields in the parent. Figure out the default values SolidJS style.
@@ -42,6 +42,10 @@ export default function GridMapSquare(props: GridMapSquareProps) {
 
   const [canMove, setCanMove] = createSignal(true);
   const [clicked, setClicked] = createSignal(false);
+
+  const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
+
+  const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
 
   onMount(async () => {
     // Create the actual grid:
@@ -74,23 +78,16 @@ export default function GridMapSquare(props: GridMapSquareProps) {
     setPathfinder(getPathfinder(generatedGrid, (element: PathfinderCell) => element.f));
     setPlayer(getPlayer(generatedGrid, generatedPlayerStartingPosition));
 
-    console.log('======> PLAYER AT: ');
-    console.log(`${player().x}, ${player().y}`);
-
-    // p = getPlayer(generatedGrid, generatedPlayerStartingPosition);
-    // setGrid(p.grid);
+    setGridCells(generatedGrid.cells);
   });
 
   const movePlayerToCell = async (cell: GridCell) => {
     setClicked(true);
-    console.log('here');
-    console.log(grid().getCellAt(player().x, player().y));
-    console.log(cell);
-
+    // TODO: remove this atrocity once I've figured out why the heck the grid isn't updating:
+    setInterval(() => setClicked(!clicked()), 10);
     pathfinder().reset();
 
     if (!canMove()) {
-      console.log('cannot move :(');
       return;
     }
 
@@ -100,11 +97,16 @@ export default function GridMapSquare(props: GridMapSquareProps) {
     const path = pathfinder().tracePath(grid().getCellAt(player().x, player().y), cell);
 
     if (path.length) {
+      if (isPlayerMoving()) {
+        // TODO: stop player from moving in the initial direction.
+      }
+      setIsPlayerMoving(true);
       await player().takePath(path);
-      setGrid(player().grid);
+      setIsPlayerMoving(false);
+      setGridCells(player().grid.cells);
       setClicked(false);
     } else {
-      setGrid(player().grid);
+      setGridCells(player().grid.cells);
       setUnreachableCell(cell);
       setTimeout(() => {
         setUnreachableCell(null);
@@ -117,14 +119,14 @@ export default function GridMapSquare(props: GridMapSquareProps) {
     console.log('Player coords: ');
     console.log(player().x, player().y);
     console.log('End player coords');
-    console.log(grid().cells);
+    console.log(grid().getCellAt(player().x, player().y).status);
   });
 
   const roomsJsx = <h1>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h1>;
   const playerJsx = <h1>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h1>;
   const corridorsJsx = <h1>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h1>;
-  const cellsJsx = <For each={grid().cells}>{cellRow =>
+  const cellsJsx = <For each={gridCells()}>{cellRow =>
     <div class={'flex'}>
       <For each={cellRow}>{(cell) =>
         <div onClick={() => movePlayerToCell(cell)}
@@ -139,13 +141,13 @@ export default function GridMapSquare(props: GridMapSquareProps) {
             'box-shadow': `inset 0 0 0 ${CELL_BORDER_WIDTH}px rgb(250 204 21)`,
             transition: 'all 500ms',
           }}
-          class={'rounded-sm'}
+          class={'rounded-sm flex items-center justify-center hover:brightness-125 cursor-pointer'}
           classList={{
-            'bg-slate-700': grid().cells[cell.y][cell.x].status === CellStatus.OBSTACLE,
+            'bg-slate-500': grid().cells[cell.y][cell.x].status === CellStatus.OBSTACLE,
             'bg-yellow-500': grid().cells[cell.y][cell.x].status === CellStatus.EMPTY,
             'bg-green-500': grid().cells[cell.y][cell.x].status === CellStatus.PLAYER,
             'bg-teal-500': grid().cells[cell.y][cell.x].status === CellStatus.VISITED,
-            'bg-red-900': unreachableCell() === cell,
+            'bg-red-500': unreachableCell() === cell,
           }}
         ><small class={'text-xs'}>{cell.x},{cell.y}</small></div>
       }</For>
@@ -167,11 +169,11 @@ export default function GridMapSquare(props: GridMapSquareProps) {
       <Show when={hasPlacedCorridors()} fallback={<h1>Generating corridors…</h1>}>
         {corridorsJsx}
       </Show>
-      <Show when={grid().cells.length > 0} fallback={<h1>Generating cells…</h1>}>
+      <Show when={gridCells().length > 0} fallback={<h1>Generating cells…</h1>}>
         <div class={'inline-block mt-12'}
           style={{
-            width: `${grid().cells.length * (CELL_WIDTH)}px`,
-            height: `${grid().cells.length * (CELL_WIDTH)}px`,
+            width: `${gridCells().length * (CELL_WIDTH)}px`,
+            height: `${gridCells().length * (CELL_WIDTH)}px`,
             'background-color': '#000',
           }}>
           {cellsJsx}

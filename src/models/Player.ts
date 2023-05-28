@@ -8,15 +8,13 @@ export interface Player {
   grid: Grid
 }
 export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
-  grid.setStatusForCellAt(CellStatus.PLAYER, startingCoords.x, startingCoords.y);
-
   const moveToCoords = (x: number, y:number) => {
-    grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
+    _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
 
     _this.x = x;
     _this.y = y;
 
-    grid.setStatusForCellAt(CellStatus.PLAYER, _this.x, _this.y);
+    _this.grid.setStatusForCellAt(CellStatus.PLAYER, _this.x, _this.y);
   };
 
   const isAt = (cell: GridCell): boolean => {
@@ -42,11 +40,12 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
       return;
     }
 
-    setTimeout(() => {
+    // setTimeout(() => {
+    moveToCoords(nextStep.x, nextStep.y);
     // Add a pause to make the thing's movement perceptible to puny human eyes.
-      moveToCoords(nextStep.x, nextStep.y);
-      takePath(path);
-    }, 50);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await takePath(path);
+    // }, 50);
   };
 
   const _this = {
@@ -55,6 +54,8 @@ export const getPlayer = (grid: Grid, startingCoords: Coords): Player => {
     takePath,
     grid,
   };
+
+  _this.grid.setStatusForCellAt(CellStatus.PLAYER, startingCoords.x, startingCoords.y);
 
   return _this;
 };
