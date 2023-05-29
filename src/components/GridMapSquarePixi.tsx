@@ -17,16 +17,17 @@ interface GridMapSquareProps {
 }
 
 export default function GridMapSquarePixi(props: GridMapSquareProps) {
-  const CELL_WIDTH = 30;
   const CELL_BORDER_WIDTH = 0.25;
+
+  const cellWidth = Math.max(12, Math.min(30, Math.floor((props.width || 0) / 40)));
 
   // TODO: pass in props from some text fields in the parent. Figure out the default values SolidJS style.
   //  - mapWidth, minRoomWidth/maxRoomWidth, heuristics, speed etc.
-  const mapWidth = props.width || 50;
-  const minRoomWidth = props.minRoomWidth || 3;
-  const maxRoomWidth = props.maxRoomWidth || 7;
+  const mapWidth = Math.min(Math.floor((props.width || 0) / cellWidth), 50);
+  const minRoomWidth = props.minRoomWidth || Math.ceil(mapWidth / 20) + 1;
+  const maxRoomWidth = props.maxRoomWidth || Math.ceil(mapWidth / 10) + 1;
 
-  const playerSpeed: Speed = {...DEFAULT_SPEED, px: CELL_WIDTH}; // TODO: this is pretty atrocious.
+  const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
 
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
   const [hasPlacedRooms, setHasPlacedRooms] = createSignal(false);
@@ -62,8 +63,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const [pixiApp] = createSignal<PIXI.Application>(
     new PIXI.Application({
       background: 'darkGrey',
-      width: mapWidth * CELL_WIDTH,
-      height: mapWidth * CELL_WIDTH,
+      width: mapWidth * cellWidth,
+      height: mapWidth * cellWidth,
     }),
   );
 
@@ -105,12 +106,12 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     gridCells().map(row => {
       row.map(cell => {
         const sprite = new PIXI.Sprite();
-        sprite.width = CELL_WIDTH;
+        sprite.width = cellWidth;
         // noinspection JSSuspiciousNameCombination
-        sprite.height = CELL_WIDTH;
+        sprite.height = cellWidth;
         sprite.texture = PIXI.Texture.WHITE;
-        sprite.x = cell.x * CELL_WIDTH;
-        sprite.y = cell.y * CELL_WIDTH;
+        sprite.x = cell.x * cellWidth;
+        sprite.y = cell.y * cellWidth;
         sprite.zIndex = 1;
         if (cell.status === CellStatus.OBSTACLE) {
           sprite.tint = new PIXI.Color('rgb(100 116 139)');
@@ -154,17 +155,17 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       [light, light2, light3],
     ));
 
-    playerSprite.width = CELL_WIDTH;
-    playerSprite.height = CELL_WIDTH;
-    playerSprite.x = player().x * CELL_WIDTH;
-    playerSprite.y = player().y * CELL_WIDTH;
+    playerSprite.width = cellWidth;
+    playerSprite.height = cellWidth;
+    playerSprite.x = player().x * cellWidth;
+    playerSprite.y = player().y * cellWidth;
     playerSprite.zIndex = 10;
     playerSprite.texture = PIXI.Texture.from('https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png');
 
     container.addChild(playerSprite);
 
     light.beginFill();
-    light.drawCircle(playerSprite.x + CELL_WIDTH/2, playerSprite.y + CELL_WIDTH/2, CELL_WIDTH * 10);
+    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
     light.endFill();
     light.blendMode = BLEND_MODES.ERASE;
 
@@ -174,14 +175,14 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const light2Opts = {
       type: ColorGradientFilter.RADIAL,
       stops: [
-        { offset: 0.07, color: 'rgb(255,128,67)', alpha: 0.5 },
-        { offset: 0.65, color: 'rgb(0, 0, 0)', alpha: 1 },
+        {offset: 0.07, color: 'rgb(255,128,67)', alpha: 0.5},
+        {offset: 0.65, color: 'rgb(0, 0, 0)', alpha: 1},
       ],
       alpha: 1,
     };
 
     light2.beginFill();
-    light2.drawCircle(playerSprite.x + CELL_WIDTH/2, playerSprite.y + CELL_WIDTH/2, CELL_WIDTH * 10);
+    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
     light2.endFill();
     const gradientLight2 = new ColorGradientFilter(light2Opts);
     gradientLight2.blendMode = BLEND_MODES.SCREEN;
@@ -192,14 +193,14 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const light3Opts = {
       type: ColorGradientFilter.RADIAL,
       stops: [
-        { offset: 0, color: 'rgb(256, 256, 256)', alpha: 1 },
-        { offset: 1, color: 'rgb(18,10,4)', alpha: 1 },
+        {offset: 0, color: 'rgb(256, 256, 256)', alpha: 1},
+        {offset: 1, color: 'rgb(18,10,4)', alpha: 1},
       ],
       alpha: 1,
     };
 
     light3.beginFill();
-    light3.drawCircle(playerSprite.x + CELL_WIDTH/2, playerSprite.y + CELL_WIDTH/2, CELL_WIDTH * 10);
+    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
     light3.endFill();
     const gradientLight3 = new ColorGradientFilter(light3Opts);
     gradientLight3.blendMode = BLEND_MODES.MULTIPLY;
@@ -276,8 +277,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       <Show when={gridCells().length > 0 && pixiApp()} fallback={<h1>Generating cells…</h1>}>
         <div class={'inline-block mt-12'}
           style={{
-            width: `${gridCells().length * (CELL_WIDTH)}px`,
-            height: `${gridCells().length * (CELL_WIDTH)}px`,
+            width: `${gridCells().length * (cellWidth)}px`,
+            height: `${gridCells().length * (cellWidth)}px`,
             'background-color': '#000',
           }}>
           {pixiApp().view}
