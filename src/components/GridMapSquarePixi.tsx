@@ -217,9 +217,6 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   });
 
   const movePlayerToCell = async (cell: GridCell) => {
-    // TODO: remove this atrocity once I've figured out why the heck the grid isn't updating:
-    // const atrocity = setInterval(() => setClicked(!clicked()), 10);
-
     pathfinder().reset();
     //Stop player from moving in the initial direction.
     player().isChangingDirection = true;
@@ -240,41 +237,33 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         setUnreachableCell(null);
       }, 1000);
     }
-
-    // TODO: other end of the atrocity to clean up.
-    // TODO: might keep the timeout to reset some text, but NEED TO FIX: reset the timeout time for every click
-    //  (at least after the atrocity is cleaned) - or store the timeout reference and clear it at the beginning of each click.
-    setTimeout(() => {
-      setTimeToTracePath(null);
-      // clearInterval(atrocity);
-    }, 3000);
   };
 
-  const roomsJsx = <h1>Finished generating a {mapWidth}x{mapWidth} map,
-    placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h1>;
-  const playerJsx = <h1>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h1>;
-  const corridorsJsx = <h1>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h1>;
-  const tracePathTimeJsx = <h1>Finished tracing last path in {timeToTracePath()}ms. The player moves at a fixed speed of
-    1 block every {playerSpeed.ms}ms.</h1>;
+  const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
+    placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
+  const playerJsx = <h2>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h2>;
+  const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
+  const tracePathTimeJsx = <h2>Finished tracing last path in {timeToTracePath()}ms.</h2>;
 
   // TODO:
   //  1. Use Tailwind classes everywhere.
   //  2. Implement tests.
   return (
     <div class={'text-center mt-14'}>
-      <Show when={hasPlacedRooms()} fallback={<h1>Generating {mapWidth}x{mapWidth} map…</h1>}>
+      <Show when={hasPlacedRooms()} fallback={<h2>Generating {mapWidth}x{mapWidth} map…</h2>}>
         {roomsJsx}
       </Show>
-      <Show when={hasPlacedRooms() && playerStartingPosition().x > -1} fallback={<h1>Placing player…</h1>}>
+      <Show when={hasPlacedRooms() && playerStartingPosition().x > -1} fallback={<h2>Placing player…</h2>}>
         {playerJsx}
       </Show>
-      <Show when={hasPlacedCorridors()} fallback={<h1>Generating corridors…</h1>}>
+      <Show when={hasPlacedCorridors()} fallback={<h2>Generating corridors…</h2>}>
         {corridorsJsx}
       </Show>
-      <Show when={timeToTracePath() !== null} fallback={<h1>Waiting for player to move…</h1>}>
+      <Show when={timeToTracePath() !== null} fallback={<h2>Waiting for player to move…</h2>}>
         {tracePathTimeJsx}
       </Show>
-      <Show when={gridCells().length > 0 && pixiApp()} fallback={<h1>Generating cells…</h1>}>
+      <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
+      <Show when={gridCells().length > 0 && pixiApp()} fallback={<h2>Generating cells…</h2>}>
         <div class={'inline-block mt-12'}
           style={{
             width: `${gridCells().length * (cellWidth)}px`,
