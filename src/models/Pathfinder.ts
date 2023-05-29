@@ -176,7 +176,7 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
       // Find all neighbours for the current node. Optionally find diagonal neighbours as well (false by default).
       // TODO: consolidate with the heuristics stuff below (see original (improved) algo version)
       // TODO: Or don't. It seems like this combination of using diagonal heuristics for the path and manhattan for the neighbours works most naturally.
-      const neighbours = getNeighbours(currentElement, Heuristics.DIAGONAL);
+      const neighbours = getNeighbours(currentElement, heuristics);
 
       for (let i = 0, il = neighbours.length; i < il; i++) {
         const neighbor = neighbours[i];
@@ -195,7 +195,10 @@ export const getPathfinder = (grid: Grid, scoreFn: BinaryHeap<PathfinderCell>['s
           // Found an optimal (so far) path to this node. Take score for node to see how good it is.
           neighbor.visited = true;
           neighbor.parent = currentElement;
-          neighbor.useManhattanHeuristics(end);
+          // neighbor.useManhattanHeuristics(end);
+          heuristics === Heuristics.MANHATTAN ?
+            neighbor.useManhattanHeuristics(end) :
+            neighbor.useDiagonalHeuristics(end);
           // neighbor.setDiagonalHeuristicTo(end);
           neighbor.g = gScore;
           neighbor.f = neighbor.g + neighbor.h;

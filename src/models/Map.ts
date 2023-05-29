@@ -3,7 +3,7 @@ import {Coords} from './Coords';
 import {Corridor, CorridorVector, getCorridor} from './Corridor';
 import {getRoom, Room} from './Room';
 
-const MAP_BORDER_THICKNESS = 2;
+export const MAP_BORDER_THICKNESS = 2;
 const MIN_ROOM_ASPECT_RATIO = 1.6; // 16:10 aspect ratio
 const GRID_SPACE_UTILISATION_ITERATIVE_DECREASE = 0.01;
 const MIN_GRID_SPACE_UTILISATION = 0.5; // Use at least this % of the grid for room space
