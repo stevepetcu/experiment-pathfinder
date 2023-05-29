@@ -41,6 +41,13 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
       co.x += vectorX * speed;
       co.y += vectorY * speed;
     });
+
+    window.scroll({
+      // TODO: Move this outta here!
+      left: playerSprite.x,
+      top: playerSprite.y,
+      behavior: 'auto',
+    });
   };
 
   const isAt = (cell: GridCell): boolean => {

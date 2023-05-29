@@ -1,7 +1,7 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
 import {BLEND_MODES} from 'pixi.js';
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import { createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
@@ -124,8 +124,6 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
           // Shows hand cursor
           sprite.cursor = 'pointer';
           sprite.on('pointerdown', (ev) => {
-            console.log('clicked!');
-            console.log(`Cell coords: (x: ${cell.x}, y: ${cell.x})`);
             movePlayerToCell(cell);
           });
         }
