@@ -142,22 +142,50 @@ export default function GridMapSquare(props: GridMapSquareProps) {
           data-roomId={cell.roomId}
           data-cellStatus={cell.status}
           style={{
+            transition: 'all 350ms ease-in-out',
             width: `${CELL_WIDTH}px`,
             height: `${CELL_WIDTH}px`,
             'box-shadow': `inset 0 0 0 ${CELL_BORDER_WIDTH}px rgb(250 204 21)`,
-            transition: 'all 350ms ease-in-out',
+            filter: `brightness(${Math.max(0.1, 1 - cell.distanceToCoords({x: player().x, y:player().y}) / 25)})`,
+            // filter: `blur(${cell.distanceToCoords({x: player().x, y: player().y}) / 50}rem)`,
+            // filter: `contrast(${Math.max(0.1, 1 - cell.distanceToCoords({x: player().x, y:player().y}) / 50)})`,
+            // filter: `contrast(${Math.max(0.1, 1 - cell.distanceToCoords({x: player().x, y:player().y}) / 50)}) blur(${cell.distanceToCoords({x: player().x, y: player().y}) / 50}rem) brightness(${Math.max(0.1, 1 - cell.distanceToCoords({x: player().x, y:player().y}) / 50)})`,
+            // opacity: Math.max(0.1, 1 - cell.distanceToCoords({x: player().x, y:player().y}) / 50),
           }}
-          class={'rounded-sm flex items-center justify-center hover:brightness-125 cursor-pointer'}
+          class={
+            'group rounded-sm flex items-center justify-center ' +
+            'cursor-pointer hover:border-4 hover:border-green-500 hover:border-double '
+            // 'brightness-50 ' +
+            // `brightness-${Math.max(50, 100 - cell.distanceToCoords({x: player().x, y:player().y}) * 10)}`
+          }
           classList={{
             'bg-slate-500': grid().cells[cell.y][cell.x].status === CellStatus.OBSTACLE,
-            'bg-yellow-500': grid().cells[cell.y][cell.x].status === CellStatus.EMPTY,
-            'bg-green-500': grid().cells[cell.y][cell.x].status === CellStatus.PLAYER,
+            'bg-yellow-500': [CellStatus.EMPTY, CellStatus.PLAYER].includes(grid().cells[cell.y][cell.x].status),
+            // 'bg-green-500': grid().cells[cell.y][cell.x].status === CellStatus.PLAYER,
             'bg-teal-500': grid().cells[cell.y][cell.x].status === CellStatus.VISITED,
-            'bg-red-500': unreachableCell() === cell,
           }}
         >
           {/*TODO: add a "debugMode" variable to enable this thing, maybe other debugging stuff as well.*/}
           {/*<small class={'text-xs'}>{cell.x},{cell.y}</small>*/}
+          {/*TODO: render conditionally based on player position? But After I fix the refresh issue*/}
+          <div class={'rounded-full bg-green-500'}
+            classList={{
+              'bg-green-500': grid().cells[cell.y][cell.x].status === CellStatus.PLAYER,
+            }}
+            style={{
+              width: `${CELL_WIDTH/2}px`,
+              height: `${CELL_WIDTH/2}px`,
+            }}
+            data-clicked={clicked()}
+          />
+          {/*TODO: try using an fa-icon*/}
+          <small class={'hidden group-active:inline-flex'}
+            classList={{
+              'text-green-500': unreachableCell() !== cell,
+              'text-red-500': unreachableCell() === cell,
+            }}
+            data-clicked={clicked()}
+          >X</small>
         </div>
       }</For>
     </div>
