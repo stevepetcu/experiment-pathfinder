@@ -1,7 +1,7 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
 import {BLEND_MODES} from 'pixi.js';
-import { createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
@@ -44,6 +44,16 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder());
 
   const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
+
+  // const faceDownImagesTextureArray = [
+  //   Texture.from('src/assets/character/running_down_0.png'),
+  //   Texture.from('src/assets/character/running_down_1.png'),
+  // ];
+
+  // const playerSprite = new PIXI.AnimatedSprite(faceDownImagesTextureArray, false);
+
+  // playerSprite.animationSpeed = 30;
+  // playerSprite.play();
 
   const playerSprite = new PIXI.Sprite();
 
@@ -109,21 +119,25 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         sprite.width = cellWidth;
         // noinspection JSSuspiciousNameCombination
         sprite.height = cellWidth;
-        sprite.texture = PIXI.Texture.WHITE;
         sprite.x = cell.x * cellWidth;
         sprite.y = cell.y * cellWidth;
         sprite.zIndex = 1;
         if (cell.status === CellStatus.OBSTACLE) {
-          sprite.tint = new PIXI.Color('rgb(100 116 139)');
+          const randomTileTextureNumber = randomInt(0, 5);
+
+          sprite.texture = PIXI.Texture.from(`src/assets/tiles/wall_${randomTileTextureNumber}.png`);
         }
         if (cell.status !== CellStatus.OBSTACLE) {
-          sprite.tint = new PIXI.Color('rgb(234 179 8)');
+          const randomTileTextureNumber = randomInt(0, 6);
+
+          sprite.texture = PIXI.Texture.from(`src/assets/tiles/path_${randomTileTextureNumber}.png`);
+          // sprite.tint = new PIXI.Color('rgb(234 179 8)');
 
           // Opt-in to interactivity
           sprite.eventMode = 'dynamic';
           // Shows hand cursor
           sprite.cursor = 'pointer';
-          sprite.on('pointerdown', (ev) => {
+          sprite.on('pointerdown', () => {
             movePlayerToCell(cell);
           });
         }
