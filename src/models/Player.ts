@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 
+import {CharacterTextureMap} from '../components/GridMapSquarePixi';
 import {Coords} from './Coords';
 import {CellStatus, Grid, GridCell} from './SquareGrid';
 
@@ -9,7 +10,7 @@ export interface Speed {
 }
 export const DEFAULT_SPEED: Speed = {
   px: 20,
-  ms: 50,
+  ms: 300, // Lower is faster.
 };
 
 enum MovementDirection {
@@ -31,23 +32,45 @@ export interface Player {
   grid: Grid;
   isChangingDirection: boolean;
   movementState: {
-    isMoving: boolean;
+    action: 'running' | 'lookingAround';
     direction: MovementDirection
   }
-  playerSprite: PIXI.Sprite;
+  playerSprite: PIXI.AnimatedSprite;
   coordObservers: PIXI.Graphics[];
 }
-export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI.Sprite,
-  coordObservers: PIXI.Graphics[] = []): Player => {
-  const movementState = {
-    isMoving: false,
+
+// TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
+export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI.AnimatedSprite,
+  coordObservers: PIXI.Graphics[] = [], characterTextures: CharacterTextureMap,
+  gridScrollableContainer?: Element | null): Player => {
+  const movementState: Player['movementState'] = {
+    action: 'lookingAround',
     direction: MovementDirection.S,
   };
+
   const moveToCoords = (x: number, y:number, speed: Speed['px']) => {
+    _this.movementState.action = 'running';
+    _this.playerSprite.animationSpeed = 500;
+
     _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
 
     const vectorX = x - _this.x;
     const vectorY = y - _this.y;
+
+    const direction = vectorX === 0 && vectorY === -1 ? MovementDirection.N :
+      vectorX === 1 && vectorY === -1 ? MovementDirection.NE :
+        vectorX === 1 && vectorY === 0 ? MovementDirection.E :
+          vectorX === 1 && vectorY === 1 ? MovementDirection.SE :
+            vectorX === 0 && vectorY === 1 ? MovementDirection.S :
+              vectorX === -1 && vectorY === 1 ? MovementDirection.SW :
+                vectorX === -1 && vectorY === 0 ? MovementDirection.W:
+                  MovementDirection.NW;
+
+    if (direction !== _this.movementState.direction) {
+      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${direction}`];
+      _this.playerSprite.play();
+      _this.movementState.direction = direction;
+    }
 
     _this.x = x;
     _this.y = y;
@@ -62,12 +85,13 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
       co.y += vectorY * speed;
     });
 
-    window.scroll({
+    gridScrollableContainer?.scroll({
       // TODO: Move this outta here!
-      left: playerSprite.x,
-      top: playerSprite.y,
-      behavior: 'auto',
+      left: _this.x * speed - gridScrollableContainer?.clientWidth / 2,
+      top: _this.y * speed - gridScrollableContainer?.clientHeight / 2,
     });
+
+    console.log(gridScrollableContainer?.scrollLeft, gridScrollableContainer?.scrollTop);
   };
 
   const isAt = (cell: GridCell): boolean => {
@@ -86,11 +110,19 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
 
     if (nextStep === undefined) {
       console.debug('Unreachable, or reached position!');
+      _this.movementState.action = 'lookingAround';
+      _this.playerSprite.animationSpeed = 30;
+      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${_this.movementState.direction}`];
+      _this.playerSprite.play();
       return;
     }
 
     if (isAt(nextStep)) {
       console.debug('Already at location.');
+      _this.movementState.action = 'lookingAround';
+      _this.playerSprite.animationSpeed = 30;
+      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${_this.movementState.direction}`];
+      _this.playerSprite.play();
       return;
     }
 

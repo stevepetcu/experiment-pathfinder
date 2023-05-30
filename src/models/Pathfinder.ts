@@ -2,7 +2,7 @@ import binaryHeap, {BinaryHeap} from '../utils/BinaryHeap';
 import {Coords} from './Coords';
 import {Grid, GridCell} from './SquareGrid';
 
-enum Heuristics {
+export enum Heuristics {
   MANHATTAN = 'manhattan',
   DIAGONAL = 'diagonal',
 }
@@ -117,7 +117,7 @@ const getPathfinderCell = (gridCell: GridCell): PathfinderCell => {
 export interface Pathfinder {
   cells: PathfinderCell[][];
   heap: BinaryHeap<PathfinderCell>;
-  tracePath: (from: GridCell, to: GridCell) => GridCell[];
+  tracePath: (from: GridCell, to: GridCell, heuristics?: Heuristics) => GridCell[];
   reset: () => void;
 }
 

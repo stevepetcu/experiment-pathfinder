@@ -1,11 +1,11 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
 import {BLEND_MODES, Texture} from 'pixi.js';
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
-import {getEmptyPathfinder, getPathfinder, Pathfinder, PathfinderCell} from '../models/Pathfinder';
+import {getEmptyPathfinder, getPathfinder, Heuristics, Pathfinder, PathfinderCell} from '../models/Pathfinder';
 import {DEFAULT_SPEED, getPlayer, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, Grid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
@@ -16,12 +16,29 @@ interface GridMapSquareProps {
   maxRoomWidth?: number;
 }
 
+export interface CharacterTextureMap {
+  lookingAround_n: Texture[],
+  lookingAround_ne: Texture[],
+  lookingAround_e: Texture[],
+  lookingAround_se: Texture[],
+  lookingAround_s: Texture[],
+  lookingAround_sw: Texture[],
+  lookingAround_w: Texture[],
+  lookingAround_nw: Texture[],
+  running_n: Texture[],
+  running_ne: Texture[],
+  running_e: Texture[],
+  running_se: Texture[],
+  running_s: Texture[],
+  running_sw: Texture[],
+  running_w: Texture[],
+  running_nw: Texture[],
+}
+
 export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const CELL_BORDER_WIDTH = 0.25;
 
-  const cellWidth = Math.max(20, Math.min(36, Math.floor((props.width || 0) / 40)));
-
-  console.log(cellWidth);
+  const cellWidth = Math.max(20, Math.min(50, Math.floor((props.width || 0) / 30)));
 
   // TODO: pass in props from some text fields in the parent. Figure out the default values SolidJS style.
   //  - mapWidth, minRoomWidth/maxRoomWidth, heuristics, speed etc.
@@ -47,16 +64,125 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
 
-  // TODO: I think I should first load the assets.
-  const lookingAroundDownImagesTextureArray = [
-    Texture.from('assets/character/looking_around_s_0.png'),
-    Texture.from('assets/character/looking_around_s_2.png'),
-    Texture.from('assets/character/looking_around_s_4.png'),
-    Texture.from('assets/character/looking_around_s_3.png'),
-    Texture.from('assets/character/looking_around_s_1.png'),
-  ];
+  const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
 
-  const playerSprite = new PIXI.AnimatedSprite(lookingAroundDownImagesTextureArray, true);
+  // TODO: I think I should first load the textures into assets?
+  const characterTextures: CharacterTextureMap = {
+    lookingAround_n: [
+      Texture.from('assets/character/looking_around_n_0.png'),
+      Texture.from('assets/character/looking_around_n_2.png'),
+      Texture.from('assets/character/looking_around_n_4.png'),
+      Texture.from('assets/character/looking_around_n_3.png'),
+      Texture.from('assets/character/looking_around_n_1.png'),
+    ],
+    lookingAround_ne: [
+      Texture.from('assets/character/looking_around_ne_0.png'),
+      Texture.from('assets/character/looking_around_ne_2.png'),
+      Texture.from('assets/character/looking_around_ne_4.png'),
+      Texture.from('assets/character/looking_around_ne_3.png'),
+      Texture.from('assets/character/looking_around_ne_1.png'),
+    ],
+    lookingAround_e: [
+      Texture.from('assets/character/looking_around_e_0.png'),
+      Texture.from('assets/character/looking_around_e_2.png'),
+      Texture.from('assets/character/looking_around_e_4.png'),
+      Texture.from('assets/character/looking_around_e_3.png'),
+      Texture.from('assets/character/looking_around_e_1.png'),
+    ],
+    lookingAround_se: [
+      Texture.from('assets/character/looking_around_se_0.png'),
+      Texture.from('assets/character/looking_around_se_2.png'),
+      Texture.from('assets/character/looking_around_se_4.png'),
+      Texture.from('assets/character/looking_around_se_3.png'),
+      Texture.from('assets/character/looking_around_se_1.png'),
+    ],
+    lookingAround_s: [
+      Texture.from('assets/character/looking_around_s_0.png'),
+      Texture.from('assets/character/looking_around_s_2.png'),
+      Texture.from('assets/character/looking_around_s_4.png'),
+      Texture.from('assets/character/looking_around_s_3.png'),
+      Texture.from('assets/character/looking_around_s_1.png'),
+    ],
+    lookingAround_sw: [
+      Texture.from('assets/character/looking_around_sw_0.png'),
+      Texture.from('assets/character/looking_around_sw_2.png'),
+      Texture.from('assets/character/looking_around_sw_4.png'),
+      Texture.from('assets/character/looking_around_sw_3.png'),
+      Texture.from('assets/character/looking_around_sw_1.png'),
+    ],
+    lookingAround_w: [
+      Texture.from('assets/character/looking_around_w_0.png'),
+      Texture.from('assets/character/looking_around_w_2.png'),
+      Texture.from('assets/character/looking_around_w_4.png'),
+      Texture.from('assets/character/looking_around_w_3.png'),
+      Texture.from('assets/character/looking_around_w_1.png'),
+    ],
+    lookingAround_nw: [
+      Texture.from('assets/character/looking_around_nw_0.png'),
+      Texture.from('assets/character/looking_around_nw_2.png'),
+      Texture.from('assets/character/looking_around_nw_4.png'),
+      Texture.from('assets/character/looking_around_nw_3.png'),
+      Texture.from('assets/character/looking_around_nw_1.png'),
+    ],
+    running_n: [
+      Texture.from('assets/character/running_n_0.png'),
+      Texture.from('assets/character/running_n_1.png'),
+      Texture.from('assets/character/running_n_2.png'),
+      Texture.from('assets/character/running_n_3.png'),
+      Texture.from('assets/character/running_n_4.png'),
+    ],
+    running_ne: [
+      Texture.from('assets/character/running_ne_0.png'),
+      Texture.from('assets/character/running_ne_1.png'),
+      Texture.from('assets/character/running_ne_2.png'),
+      Texture.from('assets/character/running_ne_3.png'),
+      Texture.from('assets/character/running_ne_4.png'),
+    ],
+    running_e: [
+      Texture.from('assets/character/running_e_0.png'),
+      Texture.from('assets/character/running_e_1.png'),
+      Texture.from('assets/character/running_e_2.png'),
+      Texture.from('assets/character/running_e_3.png'),
+      Texture.from('assets/character/running_e_4.png'),
+    ],
+    running_se: [
+      Texture.from('assets/character/running_se_0.png'),
+      Texture.from('assets/character/running_se_1.png'),
+      Texture.from('assets/character/running_se_2.png'),
+      Texture.from('assets/character/running_se_3.png'),
+      Texture.from('assets/character/running_se_4.png'),
+    ],
+    running_s: [
+      Texture.from('assets/character/running_s_0.png'),
+      Texture.from('assets/character/running_s_1.png'),
+      Texture.from('assets/character/running_s_2.png'),
+      Texture.from('assets/character/running_s_3.png'),
+      Texture.from('assets/character/running_s_4.png'),
+    ],
+    running_sw: [
+      Texture.from('assets/character/running_sw_0.png'),
+      Texture.from('assets/character/running_sw_1.png'),
+      Texture.from('assets/character/running_sw_2.png'),
+      Texture.from('assets/character/running_sw_3.png'),
+      Texture.from('assets/character/running_sw_4.png'),
+    ],
+    running_w: [
+      Texture.from('assets/character/running_w_0.png'),
+      Texture.from('assets/character/running_w_1.png'),
+      Texture.from('assets/character/running_w_2.png'),
+      Texture.from('assets/character/running_w_3.png'),
+      Texture.from('assets/character/running_w_4.png'),
+    ],
+    running_nw: [
+      Texture.from('assets/character/running_nw_0.png'),
+      Texture.from('assets/character/running_nw_1.png'),
+      Texture.from('assets/character/running_nw_2.png'),
+      Texture.from('assets/character/running_nw_3.png'),
+      Texture.from('assets/character/running_nw_4.png'),
+    ],
+  };
+
+  const playerSprite = new PIXI.AnimatedSprite(characterTextures['lookingAround_s'], true);
 
   playerSprite.animationSpeed = 30;
   playerSprite.play();
@@ -68,6 +194,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     {x: -1, y: -1},
     playerSprite,
     [],
+    characterTextures,
   ));
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
@@ -166,12 +293,24 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const light3 = new PIXI.Graphics();
 
 
+    setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
+
     setPlayer(getPlayer(
       generatedGrid,
       generatedPlayerStartingPosition,
       playerSprite,
       [light, light2, light3],
+      characterTextures,
+      gridScrollableContainer(),
     ));
+
+    gridScrollableContainer()?.scroll({
+      left: player().x * cellWidth - gridScrollableContainer()?.clientWidth / 2,
+      top: player().y * cellWidth - gridScrollableContainer()?.clientHeight / 2,
+    });
+    console.log('Container stuff after scroll:');
+
+    console.log(gridScrollableContainer()?.scrollLeft, gridScrollableContainer()?.scrollTop);
 
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
@@ -193,8 +332,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const light2Opts = {
       type: ColorGradientFilter.RADIAL,
       stops: [
-        {offset: 0.00, color: 'rgb(255,128,67)', alpha: 0.35},
-        {offset: 0.5, color: 'rgb(0, 0, 0)', alpha: 1},
+        {offset: 0, color: 'rgb(33,211,18)', alpha: 0.35},
+        {offset: 0.2, color: 'rgb(0, 0, 0)', alpha: 1},
       ],
       alpha: 1,
     };
@@ -234,13 +373,24 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
   });
 
+  createEffect(() => {
+    // TODO: Do a bunch of things, like setting the player sprite texture,
+    //  moving the player sprite, moving the browser window etc. here,
+    //  instead of inside the Player object!
+    console.log(player().movementState);
+  });
+
   const movePlayerToCell = async (cell: GridCell) => {
     pathfinder().reset();
     //Stop player from moving in the initial direction.
     player().isChangingDirection = true;
 
     const now = Date.now();
-    const path = pathfinder().tracePath(grid().getCellAt(player().x, player().y), cell);
+    const path = pathfinder().tracePath(
+      grid().getCellAt(player().x, player().y),
+      cell,
+      Heuristics.DIAGONAL,
+    );
     setTimeToTracePath(Date.now() - now);
 
     if (path.length) {
@@ -282,13 +432,14 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       <Show when={gridCells().length > 0 && pixiApp()} fallback={<h2>Generating cells…</h2>}>
-        <div class={'inline-block mt-12'}
-          style={{
+        <div id='grid-scrollable-container' class={'w-80 h-56 sm:w-96 sm:h-56 md:w-1/2 md:h-[30rem] lg:h-[40rem] overflow-auto inline-block mt-12'}>
+          <div style={{
             width: `${gridCells().length * (cellWidth)}px`,
             height: `${gridCells().length * (cellWidth)}px`,
             'background-color': '#000',
           }}>
-          {pixiApp().view}
+            {pixiApp().view}
+          </div>
         </div>
       </Show>
     </div>
