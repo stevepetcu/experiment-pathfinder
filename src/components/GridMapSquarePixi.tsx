@@ -125,12 +125,12 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         if (cell.status === CellStatus.OBSTACLE) {
           const randomTileTextureNumber = randomInt(0, 5);
 
-          sprite.texture = PIXI.Texture.from(`src/assets/tiles/wall_${randomTileTextureNumber}.png`);
+          sprite.texture = PIXI.Texture.from(`assets/tiles/wall_${randomTileTextureNumber}.png`);
         }
         if (cell.status !== CellStatus.OBSTACLE) {
           const randomTileTextureNumber = randomInt(0, 6);
 
-          sprite.texture = PIXI.Texture.from(`src/assets/tiles/path_${randomTileTextureNumber}.png`);
+          sprite.texture = PIXI.Texture.from(`assets/tiles/path_${randomTileTextureNumber}.png`);
           // sprite.tint = new PIXI.Color('rgb(234 179 8)');
 
           // Opt-in to interactivity
