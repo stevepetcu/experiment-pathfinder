@@ -12,17 +12,37 @@ export const DEFAULT_SPEED: Speed = {
   ms: 50,
 };
 
+enum MovementDirection {
+  // TODO: Implement directional combinations to use with Diagonal heuristics.
+  N = 'n',
+  NE = 'ne',
+  E = 'e',
+  SE = 'se',
+  S = 's',
+  SW = 'sw',
+  W = 'w',
+  NW = 'nw'
+}
+
 export interface Player {
   x: Coords['x'];
   y: Coords['y'];
   takePath: (path: GridCell[], isChangingDirection: boolean, speed?: Speed) => void;
   grid: Grid;
   isChangingDirection: boolean;
+  movementState: {
+    isMoving: boolean;
+    direction: MovementDirection
+  }
   playerSprite: PIXI.Sprite;
   coordObservers: PIXI.Graphics[];
 }
 export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI.Sprite,
   coordObservers: PIXI.Graphics[] = []): Player => {
+  const movementState = {
+    isMoving: false,
+    direction: MovementDirection.S,
+  };
   const moveToCoords = (x: number, y:number, speed: Speed['px']) => {
     _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
 
@@ -100,6 +120,7 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
     isChangingDirection: false,
     playerSprite,
     coordObservers,
+    movementState,
   };
 
   _this.grid.setStatusForCellAt(CellStatus.PLAYER, startingCoords.x, startingCoords.y);

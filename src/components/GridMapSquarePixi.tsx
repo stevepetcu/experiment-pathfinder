@@ -1,6 +1,6 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
-import {BLEND_MODES} from 'pixi.js';
+import {BLEND_MODES, Texture} from 'pixi.js';
 import {createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
@@ -19,7 +19,9 @@ interface GridMapSquareProps {
 export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const CELL_BORDER_WIDTH = 0.25;
 
-  const cellWidth = Math.max(12, Math.min(30, Math.floor((props.width || 0) / 40)));
+  const cellWidth = Math.max(20, Math.min(36, Math.floor((props.width || 0) / 40)));
+
+  console.log(cellWidth);
 
   // TODO: pass in props from some text fields in the parent. Figure out the default values SolidJS style.
   //  - mapWidth, minRoomWidth/maxRoomWidth, heuristics, speed etc.
@@ -45,17 +47,21 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
 
-  // const faceDownImagesTextureArray = [
-  //   Texture.from('src/assets/character/running_down_0.png'),
-  //   Texture.from('src/assets/character/running_down_1.png'),
-  // ];
+  // TODO: I think I should first load the assets.
+  const lookingAroundDownImagesTextureArray = [
+    Texture.from('assets/character/looking_around_s_0.png'),
+    Texture.from('assets/character/looking_around_s_2.png'),
+    Texture.from('assets/character/looking_around_s_4.png'),
+    Texture.from('assets/character/looking_around_s_3.png'),
+    Texture.from('assets/character/looking_around_s_1.png'),
+  ];
 
-  // const playerSprite = new PIXI.AnimatedSprite(faceDownImagesTextureArray, false);
+  const playerSprite = new PIXI.AnimatedSprite(lookingAroundDownImagesTextureArray, true);
 
-  // playerSprite.animationSpeed = 30;
-  // playerSprite.play();
+  playerSprite.animationSpeed = 30;
+  playerSprite.play();
 
-  const playerSprite = new PIXI.Sprite();
+  // const playerSprite = new PIXI.Sprite();
 
   const [player, setPlayer] = createSignal(getPlayer(
     emptyGrid,
@@ -172,7 +178,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     playerSprite.x = player().x * cellWidth;
     playerSprite.y = player().y * cellWidth;
     playerSprite.zIndex = 10;
-    playerSprite.texture = PIXI.Texture.from('https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png');
+    // playerSprite.texture = PIXI.Texture.from('https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png');
 
     container.addChild(playerSprite);
 
@@ -187,8 +193,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const light2Opts = {
       type: ColorGradientFilter.RADIAL,
       stops: [
-        {offset: 0.07, color: 'rgb(255,128,67)', alpha: 0.5},
-        {offset: 0.65, color: 'rgb(0, 0, 0)', alpha: 1},
+        {offset: 0.00, color: 'rgb(255,128,67)', alpha: 0.35},
+        {offset: 0.5, color: 'rgb(0, 0, 0)', alpha: 1},
       ],
       alpha: 1,
     };
