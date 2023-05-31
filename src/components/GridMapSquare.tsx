@@ -118,13 +118,6 @@ export default function GridMapSquare(props: GridMapSquareProps) {
     }, 3000);
   };
 
-  createEffect(() => {
-    console.log('Player coords: ');
-    console.log(player().x, player().y);
-    console.log('End player coords');
-    console.log(grid().getCellAt(player().x, player().y).status);
-  });
-
   const roomsJsx = <h1>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h1>;
   const playerJsx = <h1>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h1>;

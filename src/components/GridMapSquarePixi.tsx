@@ -6,7 +6,7 @@ import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Heuristics, Pathfinder, PathfinderCell} from '../models/Pathfinder';
-import {DEFAULT_SPEED, getPlayer, Speed} from '../models/Player';
+import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, Grid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
 
@@ -17,34 +17,43 @@ interface GridMapSquareProps {
 }
 
 export interface CharacterTextureMap {
-  lookingAround_n: Texture[],
-  lookingAround_ne: Texture[],
-  lookingAround_e: Texture[],
-  lookingAround_se: Texture[],
-  lookingAround_s: Texture[],
-  lookingAround_sw: Texture[],
-  lookingAround_w: Texture[],
-  lookingAround_nw: Texture[],
-  running_n: Texture[],
-  running_ne: Texture[],
-  running_e: Texture[],
-  running_se: Texture[],
-  running_s: Texture[],
-  running_sw: Texture[],
-  running_w: Texture[],
-  running_nw: Texture[],
+  lookingAround: {
+    north: Texture[],
+    northeast: Texture[],
+    east: Texture[],
+    southeast: Texture[],
+    south: Texture[],
+    southwest: Texture[],
+    west: Texture[],
+    northwest: Texture[],
+  },
+  running: {
+    north: Texture[],
+    northeast: Texture[],
+    east: Texture[],
+    southeast: Texture[],
+    south: Texture[],
+    southwest: Texture[],
+    west: Texture[],
+    northwest: Texture[],
+  }
 }
 
 export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const CELL_BORDER_WIDTH = 0.25;
 
-  const cellWidth = Math.max(20, Math.min(50, Math.floor((props.width || 0) / 30)));
+  // const cellWidth = Math.max(20, Math.min(50, Math.floor((props.width || 0) / 30)));
+  const cellWidth = 50;
 
   // TODO: pass in props from some text fields in the parent. Figure out the default values SolidJS style.
   //  - mapWidth, minRoomWidth/maxRoomWidth, heuristics, speed etc.
-  const mapWidth = Math.min(Math.floor((props.width || 0) / cellWidth), 50);
-  const minRoomWidth = props.minRoomWidth || Math.ceil(mapWidth / 20) + 1;
-  const maxRoomWidth = props.maxRoomWidth || Math.ceil(mapWidth / 10) + 1;
+  // const mapWidth = Math.min(Math.floor((props.width || 0) / cellWidth), 50);
+  // const minRoomWidth = props.minRoomWidth || Math.ceil(mapWidth / 20) + 1;
+  // const maxRoomWidth = props.maxRoomWidth || Math.ceil(mapWidth / 10) + 1;
+
+  const mapWidth = 50;
+  const minRoomWidth = 3;
+  const maxRoomWidth = 8;
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
 
@@ -56,6 +65,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const [hasPlacedCorridors, setHasPlacedCorridors] = createSignal(false);
   const [timeToPlaceCorridors, setTimeToPlaceCorridors] = createSignal(0);
 
+
   const [playerStartingPosition, setPlayerStartingPosition] = createSignal<Coords>({x: -1, y: -1});
 
   const emptyGrid = getEmptyGrid();
@@ -66,136 +76,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
 
-  // TODO: I think I should first load the textures into assets?
-  const characterTextures: CharacterTextureMap = {
-    lookingAround_n: [
-      Texture.from('assets/character/looking_around_n_0.png'),
-      Texture.from('assets/character/looking_around_n_2.png'),
-      Texture.from('assets/character/looking_around_n_4.png'),
-      Texture.from('assets/character/looking_around_n_3.png'),
-      Texture.from('assets/character/looking_around_n_1.png'),
-    ],
-    lookingAround_ne: [
-      Texture.from('assets/character/looking_around_ne_0.png'),
-      Texture.from('assets/character/looking_around_ne_2.png'),
-      Texture.from('assets/character/looking_around_ne_4.png'),
-      Texture.from('assets/character/looking_around_ne_3.png'),
-      Texture.from('assets/character/looking_around_ne_1.png'),
-    ],
-    lookingAround_e: [
-      Texture.from('assets/character/looking_around_e_0.png'),
-      Texture.from('assets/character/looking_around_e_2.png'),
-      Texture.from('assets/character/looking_around_e_4.png'),
-      Texture.from('assets/character/looking_around_e_3.png'),
-      Texture.from('assets/character/looking_around_e_1.png'),
-    ],
-    lookingAround_se: [
-      Texture.from('assets/character/looking_around_se_0.png'),
-      Texture.from('assets/character/looking_around_se_2.png'),
-      Texture.from('assets/character/looking_around_se_4.png'),
-      Texture.from('assets/character/looking_around_se_3.png'),
-      Texture.from('assets/character/looking_around_se_1.png'),
-    ],
-    lookingAround_s: [
-      Texture.from('assets/character/looking_around_s_0.png'),
-      Texture.from('assets/character/looking_around_s_2.png'),
-      Texture.from('assets/character/looking_around_s_4.png'),
-      Texture.from('assets/character/looking_around_s_3.png'),
-      Texture.from('assets/character/looking_around_s_1.png'),
-    ],
-    lookingAround_sw: [
-      Texture.from('assets/character/looking_around_sw_0.png'),
-      Texture.from('assets/character/looking_around_sw_2.png'),
-      Texture.from('assets/character/looking_around_sw_4.png'),
-      Texture.from('assets/character/looking_around_sw_3.png'),
-      Texture.from('assets/character/looking_around_sw_1.png'),
-    ],
-    lookingAround_w: [
-      Texture.from('assets/character/looking_around_w_0.png'),
-      Texture.from('assets/character/looking_around_w_2.png'),
-      Texture.from('assets/character/looking_around_w_4.png'),
-      Texture.from('assets/character/looking_around_w_3.png'),
-      Texture.from('assets/character/looking_around_w_1.png'),
-    ],
-    lookingAround_nw: [
-      Texture.from('assets/character/looking_around_nw_0.png'),
-      Texture.from('assets/character/looking_around_nw_2.png'),
-      Texture.from('assets/character/looking_around_nw_4.png'),
-      Texture.from('assets/character/looking_around_nw_3.png'),
-      Texture.from('assets/character/looking_around_nw_1.png'),
-    ],
-    running_n: [
-      Texture.from('assets/character/running_n_0.png'),
-      Texture.from('assets/character/running_n_1.png'),
-      Texture.from('assets/character/running_n_2.png'),
-      Texture.from('assets/character/running_n_3.png'),
-      Texture.from('assets/character/running_n_4.png'),
-    ],
-    running_ne: [
-      Texture.from('assets/character/running_ne_0.png'),
-      Texture.from('assets/character/running_ne_1.png'),
-      Texture.from('assets/character/running_ne_2.png'),
-      Texture.from('assets/character/running_ne_3.png'),
-      Texture.from('assets/character/running_ne_4.png'),
-    ],
-    running_e: [
-      Texture.from('assets/character/running_e_0.png'),
-      Texture.from('assets/character/running_e_1.png'),
-      Texture.from('assets/character/running_e_2.png'),
-      Texture.from('assets/character/running_e_3.png'),
-      Texture.from('assets/character/running_e_4.png'),
-    ],
-    running_se: [
-      Texture.from('assets/character/running_se_0.png'),
-      Texture.from('assets/character/running_se_1.png'),
-      Texture.from('assets/character/running_se_2.png'),
-      Texture.from('assets/character/running_se_3.png'),
-      Texture.from('assets/character/running_se_4.png'),
-    ],
-    running_s: [
-      Texture.from('assets/character/running_s_0.png'),
-      Texture.from('assets/character/running_s_1.png'),
-      Texture.from('assets/character/running_s_2.png'),
-      Texture.from('assets/character/running_s_3.png'),
-      Texture.from('assets/character/running_s_4.png'),
-    ],
-    running_sw: [
-      Texture.from('assets/character/running_sw_0.png'),
-      Texture.from('assets/character/running_sw_1.png'),
-      Texture.from('assets/character/running_sw_2.png'),
-      Texture.from('assets/character/running_sw_3.png'),
-      Texture.from('assets/character/running_sw_4.png'),
-    ],
-    running_w: [
-      Texture.from('assets/character/running_w_0.png'),
-      Texture.from('assets/character/running_w_1.png'),
-      Texture.from('assets/character/running_w_2.png'),
-      Texture.from('assets/character/running_w_3.png'),
-      Texture.from('assets/character/running_w_4.png'),
-    ],
-    running_nw: [
-      Texture.from('assets/character/running_nw_0.png'),
-      Texture.from('assets/character/running_nw_1.png'),
-      Texture.from('assets/character/running_nw_2.png'),
-      Texture.from('assets/character/running_nw_3.png'),
-      Texture.from('assets/character/running_nw_4.png'),
-    ],
-  };
-
-  const playerSprite = new PIXI.AnimatedSprite(characterTextures['lookingAround_s'], true);
-
-  playerSprite.animationSpeed = 30;
-  playerSprite.play();
-
-  // const playerSprite = new PIXI.Sprite();
-
-  const [player, setPlayer] = createSignal(getPlayer(
-    emptyGrid,
-    {x: -1, y: -1},
-    playerSprite,
-    [],
-    characterTextures,
-  ));
+  const [player, setPlayer] = createSignal<Player>();
+  const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
@@ -246,6 +128,10 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const container = new PIXI.Container();
     // pixiApp().stage.addChild(container);
 
+    // Add textures:
+    await PIXI.Assets.init({manifest: 'assets/sprite-textures-manifest.json'});
+    const tileTextures = await PIXI.Assets.loadBundle('tiles');
+
     gridCells().map(row => {
       row.map(cell => {
         const sprite = new PIXI.Sprite();
@@ -256,14 +142,15 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         sprite.y = cell.y * cellWidth;
         sprite.zIndex = 1;
         if (cell.status === CellStatus.OBSTACLE) {
-          const randomTileTextureNumber = randomInt(0, 5);
+          const randomWallTileTextureIndex = randomInt(0, 5);
 
-          sprite.texture = PIXI.Texture.from(`assets/tiles/wall_${randomTileTextureNumber}.png`);
+          sprite.texture = tileTextures[`tile-wall-${randomWallTileTextureIndex}`];
         }
         if (cell.status !== CellStatus.OBSTACLE) {
-          const randomTileTextureNumber = randomInt(0, 6);
+          const randomPathTileTextureIndex = randomInt(0, 6);
 
-          sprite.texture = PIXI.Texture.from(`assets/tiles/path_${randomTileTextureNumber}.png`);
+          sprite.texture = tileTextures[`tile-path-${randomPathTileTextureIndex}`];
+
           // sprite.tint = new PIXI.Color('rgb(234 179 8)');
 
           // Opt-in to interactivity
@@ -271,7 +158,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
           // Shows hand cursor
           sprite.cursor = 'pointer';
           sprite.on('pointerdown', () => {
-            movePlayerToCell(cell);
+            movePlayerTo(cell);
           });
         }
 
@@ -295,34 +182,179 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
 
+    const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
+    const charRunningTextures = await PIXI.Assets.loadBundle('character-running');
+    const charTextures = {
+      lookingAround: {
+        north: [
+          charLookingAroundTextures['north-0'],
+          charLookingAroundTextures['north-2'],
+          charLookingAroundTextures['north-4'],
+          charLookingAroundTextures['north-3'],
+          charLookingAroundTextures['north-1'],
+        ],
+        northeast: [
+          charLookingAroundTextures['northeast-0'],
+          charLookingAroundTextures['northeast-2'],
+          charLookingAroundTextures['northeast-4'],
+          charLookingAroundTextures['northeast-3'],
+          charLookingAroundTextures['northeast-1'],
+        ],
+        east: [
+          charLookingAroundTextures['east-0'],
+          charLookingAroundTextures['east-2'],
+          charLookingAroundTextures['east-4'],
+          charLookingAroundTextures['east-3'],
+          charLookingAroundTextures['east-1'],
+        ],
+        southeast: [
+          charLookingAroundTextures['southeast-0'],
+          charLookingAroundTextures['southeast-2'],
+          charLookingAroundTextures['southeast-4'],
+          charLookingAroundTextures['southeast-3'],
+          charLookingAroundTextures['southeast-1'],
+        ],
+        south: [
+          charLookingAroundTextures['south-0'],
+          charLookingAroundTextures['south-2'],
+          charLookingAroundTextures['south-4'],
+          charLookingAroundTextures['south-3'],
+          charLookingAroundTextures['south-1'],
+        ],
+        southwest: [
+          charLookingAroundTextures['southwest-0'],
+          charLookingAroundTextures['southwest-2'],
+          charLookingAroundTextures['southwest-4'],
+          charLookingAroundTextures['southwest-3'],
+          charLookingAroundTextures['southwest-1'],
+        ],
+        west: [
+          charLookingAroundTextures['west-0'],
+          charLookingAroundTextures['west-2'],
+          charLookingAroundTextures['west-4'],
+          charLookingAroundTextures['west-3'],
+          charLookingAroundTextures['west-1'],
+        ],
+        northwest: [
+          charLookingAroundTextures['northwest-0'],
+          charLookingAroundTextures['northwest-2'],
+          charLookingAroundTextures['northwest-4'],
+          charLookingAroundTextures['northwest-3'],
+          charLookingAroundTextures['northwest-1'],
+        ],
+      },
+      running: {
+        north: [
+          charRunningTextures['north-0'],
+          charRunningTextures['north-1'],
+          charRunningTextures['north-2'],
+          charRunningTextures['north-3'],
+          charRunningTextures['north-4'],
+          charRunningTextures['north-5'],
+          charRunningTextures['north-6'],
+          charRunningTextures['north-7'],
+        ],
+        northeast: [
+          charRunningTextures['northeast-0'],
+          charRunningTextures['northeast-1'],
+          charRunningTextures['northeast-2'],
+          charRunningTextures['northeast-3'],
+          charRunningTextures['northeast-4'],
+          charRunningTextures['northeast-5'],
+          charRunningTextures['northeast-6'],
+          charRunningTextures['northeast-7'],
+        ],
+        east: [
+          charRunningTextures['east-0'],
+          charRunningTextures['east-1'],
+          charRunningTextures['east-2'],
+          charRunningTextures['east-3'],
+          charRunningTextures['east-4'],
+          charRunningTextures['east-5'],
+          charRunningTextures['east-6'],
+          charRunningTextures['east-7'],
+        ],
+        southeast: [
+          charRunningTextures['southeast-0'],
+          charRunningTextures['southeast-1'],
+          charRunningTextures['southeast-2'],
+          charRunningTextures['southeast-3'],
+          charRunningTextures['southeast-4'],
+          charRunningTextures['southeast-5'],
+          charRunningTextures['southeast-6'],
+          charRunningTextures['southeast-7'],
+        ],
+        south: [
+          charRunningTextures['south-0'],
+          charRunningTextures['south-1'],
+          charRunningTextures['south-2'],
+          charRunningTextures['south-3'],
+          charRunningTextures['south-4'],
+          charRunningTextures['south-5'],
+          charRunningTextures['south-6'],
+          charRunningTextures['south-7'],
+        ],
+        southwest: [
+          charRunningTextures['southwest-0'],
+          charRunningTextures['southwest-1'],
+          charRunningTextures['southwest-2'],
+          charRunningTextures['southwest-3'],
+          charRunningTextures['southwest-4'],
+          charRunningTextures['southwest-5'],
+          charRunningTextures['southwest-6'],
+          charRunningTextures['southwest-7'],
+        ],
+        west: [
+          charRunningTextures['west-0'],
+          charRunningTextures['west-1'],
+          charRunningTextures['west-2'],
+          charRunningTextures['west-3'],
+          charRunningTextures['west-4'],
+          charRunningTextures['west-5'],
+          charRunningTextures['west-6'],
+          charRunningTextures['west-7'],
+        ],
+        northwest: [
+          charRunningTextures['northwest-0'],
+          charRunningTextures['northwest-1'],
+          charRunningTextures['northwest-2'],
+          charRunningTextures['northwest-3'],
+          charRunningTextures['northwest-4'],
+          charRunningTextures['northwest-5'],
+          charRunningTextures['northwest-6'],
+          charRunningTextures['northwest-7'],
+        ],
+      },
+    };
+
+    const playerSprite = new PIXI.AnimatedSprite(charTextures.lookingAround.south, true);
+
     setPlayer(getPlayer(
       generatedGrid,
       generatedPlayerStartingPosition,
       playerSprite,
       [light, light2, light3],
-      characterTextures,
+      charTextures,
       gridScrollableContainer(),
     ));
 
+    // Always keep the character in the center of the scrollable div when it's moving
+    // (but allow scrolling inside the div when the character is not moving)
     gridScrollableContainer()?.scroll({
-      left: player().x * cellWidth - gridScrollableContainer()?.clientWidth / 2,
-      top: player().y * cellWidth - gridScrollableContainer()?.clientHeight / 2,
+      left: (player()?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
+      top: (player()?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
     });
-    console.log('Container stuff after scroll:');
-
-    console.log(gridScrollableContainer()?.scrollLeft, gridScrollableContainer()?.scrollTop);
 
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
-    playerSprite.x = player().x * cellWidth;
-    playerSprite.y = player().y * cellWidth;
+    playerSprite.x = (player()?.x || -1) * cellWidth;
+    playerSprite.y = (player()?.y || -1) * cellWidth;
     playerSprite.zIndex = 10;
-    // playerSprite.texture = PIXI.Texture.from('https://s3-us-west-2.amazonaws.com/s.cdpn.io/693612/IaUrttj.png');
 
     container.addChild(playerSprite);
 
     light.beginFill();
-    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
+    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
     light.endFill();
     light.blendMode = BLEND_MODES.ERASE;
 
@@ -339,7 +371,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     };
 
     light2.beginFill();
-    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
+    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
     light2.endFill();
     const gradientLight2 = new ColorGradientFilter(light2Opts);
     gradientLight2.blendMode = BLEND_MODES.SCREEN;
@@ -357,7 +389,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     };
 
     light3.beginFill();
-    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 10);
+    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
     light3.endFill();
     const gradientLight3 = new ColorGradientFilter(light3Opts);
     gradientLight3.blendMode = BLEND_MODES.MULTIPLY;
@@ -370,36 +402,40 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   onCleanup(() => {
     console.debug('Destroying app…');
-    pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
+    pixiApp().destroy(true, {children: false, texture: false, baseTexture: false});
   });
 
   createEffect(() => {
     // TODO: Do a bunch of things, like setting the player sprite texture,
     //  moving the player sprite, moving the browser window etc. here,
     //  instead of inside the Player object!
-    console.log(player().movementState);
+    console.log(player()?.movementState);
   });
 
-  const movePlayerToCell = async (cell: GridCell) => {
+  const movePlayerTo= async (cell: GridCell) => {
+    if (!player()) {
+      return;
+    }
+
     pathfinder().reset();
     //Stop player from moving in the initial direction.
-    player().isChangingDirection = true;
+    player()!.isChangingDirection = true;
 
     const now = Date.now();
     const path = pathfinder().tracePath(
-      grid().getCellAt(player().x, player().y),
+      grid().getCellAt(player()!.x, player()!.y),
       cell,
       Heuristics.DIAGONAL,
     );
     setTimeToTracePath(Date.now() - now);
 
     if (path.length) {
-      // setIsPlayerMoving(true);
-      await player().takePath(path, true, playerSpeed);
-      // setIsPlayerMoving(false);
-      setGridCells(player().grid.cells);
+      setIsPlayerMoving(true);
+      await player()!.takePath(path, true, playerSpeed);
+      setIsPlayerMoving(false);
+      setGridCells(player()!.grid.cells);
     } else {
-      setGridCells(player().grid.cells);
+      setGridCells(player()!.grid.cells);
       setUnreachableCell(cell);
       setTimeout(() => {
         setUnreachableCell(null);
@@ -432,7 +468,10 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       <Show when={gridCells().length > 0 && pixiApp()} fallback={<h2>Generating cells…</h2>}>
-        <div id='grid-scrollable-container' class={'w-80 h-56 sm:w-96 sm:h-56 md:w-1/2 md:h-[30rem] lg:h-[40rem] overflow-auto inline-block mt-12'}>
+        <div id='grid-scrollable-container'
+          class={'overflow-auto inline-block mt-12 ' +
+          'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +
+          'max-h-[500px] md:max-h-[800px]'}>
           <div style={{
             width: `${gridCells().length * (cellWidth)}px`,
             height: `${gridCells().length * (cellWidth)}px`,

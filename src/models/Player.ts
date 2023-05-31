@@ -1,6 +1,7 @@
-import * as PIXI from 'pixi.js';
+import {AnimatedSprite, Graphics} from 'pixi.js';
 
 import {CharacterTextureMap} from '../components/GridMapSquarePixi';
+import randomInt from '../utils/RandomInt';
 import {Coords} from './Coords';
 import {CellStatus, Grid, GridCell} from './SquareGrid';
 
@@ -15,14 +16,14 @@ export const DEFAULT_SPEED: Speed = {
 
 enum MovementDirection {
   // TODO: Implement directional combinations to use with Diagonal heuristics.
-  N = 'n',
-  NE = 'ne',
-  E = 'e',
-  SE = 'se',
-  S = 's',
-  SW = 'sw',
-  W = 'w',
-  NW = 'nw'
+  N = 'north',
+  NE = 'northeast',
+  E = 'east',
+  SE = 'southeast',
+  S = 'south',
+  SW = 'southwest',
+  W = 'west',
+  NW = 'northwest'
 }
 
 export interface Player {
@@ -35,28 +36,42 @@ export interface Player {
     action: 'running' | 'lookingAround';
     direction: MovementDirection
   }
-  playerSprite: PIXI.AnimatedSprite;
-  coordObservers: PIXI.Graphics[];
+  playerSprite: AnimatedSprite;
+  coordObservers: Graphics[];
 }
 
 // TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
-export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI.AnimatedSprite,
-  coordObservers: PIXI.Graphics[] = [], characterTextures: CharacterTextureMap,
+export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: AnimatedSprite,
+  coordObservers: Graphics[] = [], characterTextures: CharacterTextureMap,
   gridScrollableContainer?: Element | null): Player => {
+
   const movementState: Player['movementState'] = {
     action: 'lookingAround',
     direction: MovementDirection.S,
   };
 
+  const setTextures = (movementState?: Player['movementState'], playerSprite?: AnimatedSprite) => {
+    const ps = playerSprite || _this.playerSprite;
+    const ms = movementState || _this.movementState;
+    // const fps = ms.action === 'running' ? 7 * 10 : 5 * 6; // has to be a multiple of the number of textures.
+
+    const randomNr = randomInt(0, 9);
+    const randomLookAroundSpeed = randomNr % 3 === 0 ? 5/200 :
+      randomNr % 5 === 0 ? 5 / 150 :
+        5/300; // TODO: use this later to offer an indication of when you're getting close to food.
+
+    const fps = ms.action === 'running' ? 7/20 : randomLookAroundSpeed; // has to be a multiple of the number of textures.
+
+    ps.textures = characterTextures[ms.action][ms.direction];
+    ps.animationSpeed = fps;
+    ps.play();
+  };
+
+  setTextures(movementState, playerSprite);
+
   const moveToCoords = (x: number, y:number, speed: Speed['px']) => {
-    _this.movementState.action = 'running';
-    _this.playerSprite.animationSpeed = 500;
-
-    _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
-
     const vectorX = x - _this.x;
     const vectorY = y - _this.y;
-
     const direction = vectorX === 0 && vectorY === -1 ? MovementDirection.N :
       vectorX === 1 && vectorY === -1 ? MovementDirection.NE :
         vectorX === 1 && vectorY === 0 ? MovementDirection.E :
@@ -66,11 +81,13 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
                 vectorX === -1 && vectorY === 0 ? MovementDirection.W:
                   MovementDirection.NW;
 
-    if (direction !== _this.movementState.direction) {
-      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${direction}`];
-      _this.playerSprite.play();
+    if (direction !== _this.movementState.direction || _this.movementState.action !== 'running') {
       _this.movementState.direction = direction;
+      _this.movementState.action = 'running';
+      setTextures();
     }
+
+    _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
 
     _this.x = x;
     _this.y = y;
@@ -90,8 +107,6 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
       left: _this.x * speed - gridScrollableContainer?.clientWidth / 2,
       top: _this.y * speed - gridScrollableContainer?.clientHeight / 2,
     });
-
-    console.log(gridScrollableContainer?.scrollLeft, gridScrollableContainer?.scrollTop);
   };
 
   const isAt = (cell: GridCell): boolean => {
@@ -111,18 +126,14 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: PIXI
     if (nextStep === undefined) {
       console.debug('Unreachable, or reached position!');
       _this.movementState.action = 'lookingAround';
-      _this.playerSprite.animationSpeed = 30;
-      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${_this.movementState.direction}`];
-      _this.playerSprite.play();
+      setTextures();
       return;
     }
 
     if (isAt(nextStep)) {
       console.debug('Already at location.');
       _this.movementState.action = 'lookingAround';
-      _this.playerSprite.animationSpeed = 30;
-      _this.playerSprite.textures = characterTextures[`${_this.movementState.action}_${_this.movementState.direction}`];
-      _this.playerSprite.play();
+      setTextures();
       return;
     }
 
