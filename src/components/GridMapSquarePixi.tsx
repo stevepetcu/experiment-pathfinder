@@ -1,6 +1,6 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
-import {BLEND_MODES, Texture} from 'pixi.js';
+import {BLEND_MODES, MSAA_QUALITY, Texture} from 'pixi.js';
 import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
@@ -77,7 +77,6 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
 
   const [player, setPlayer] = createSignal<Player>();
-  const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
@@ -129,6 +128,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     // pixiApp().stage.addChild(container);
 
     // Add textures:
+    // TODO: sort out the caching issue;
+    //  not sure if it's to do w/ files having the same names + it doesn't account for their path, or what.
     await PIXI.Assets.init({manifest: 'assets/sprite-textures-manifest.json'});
     const tileTextures = await PIXI.Assets.loadBundle('tiles');
 
@@ -173,17 +174,15 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const filter = new PIXI.AlphaFilter(0.95);
     fogOfWar.filters = [filter];
 
-    // container.filters = [new ColorGradientFilter(options)];
-
     const light = new PIXI.Graphics();
     const light2 = new PIXI.Graphics();
     const light3 = new PIXI.Graphics();
-
 
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
 
     const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
     const charRunningTextures = await PIXI.Assets.loadBundle('character-running');
+
     const charTextures = {
       lookingAround: {
         north: [
@@ -375,6 +374,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     light2.endFill();
     const gradientLight2 = new ColorGradientFilter(light2Opts);
     gradientLight2.blendMode = BLEND_MODES.SCREEN;
+    gradientLight2.multisample = MSAA_QUALITY.HIGH;
     light2.filters = [gradientLight2];
 
     container.addChild(light2);
@@ -393,6 +393,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     light3.endFill();
     const gradientLight3 = new ColorGradientFilter(light3Opts);
     gradientLight3.blendMode = BLEND_MODES.MULTIPLY;
+    gradientLight3.multisample = MSAA_QUALITY.HIGH;
     light3.filters = [gradientLight3];
 
     container.addChild(light3);
@@ -402,7 +403,10 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   onCleanup(() => {
     console.debug('Destroying app…');
-    pixiApp().destroy(true, {children: false, texture: false, baseTexture: false});
+    pixiApp().stage.destroy({children: true, texture: true, baseTexture: true}); // Should not be needed but…
+    pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
+    PIXI.Assets.cache.reset();
+    PIXI.Cache.reset();
   });
 
   createEffect(() => {
@@ -430,9 +434,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     setTimeToTracePath(Date.now() - now);
 
     if (path.length) {
-      setIsPlayerMoving(true);
       await player()!.takePath(path, true, playerSpeed);
-      setIsPlayerMoving(false);
       setGridCells(player()!.grid.cells);
     } else {
       setGridCells(player()!.grid.cells);
