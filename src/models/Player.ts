@@ -37,22 +37,38 @@ export interface Player {
     action: 'running' | 'lookingAround';
     direction: MovementDirection
   }
-  playerSprite: AnimatedSprite;
+  sprite: AnimatedSprite;
   coordObservers: Graphics[];
+  clone: () => Player;
 }
 
 // TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
-export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, playerSprite: AnimatedSprite,
+export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, sprite: AnimatedSprite,
   coordObservers: Graphics[] = [], characterTextures: CharacterTextureMap,
   gridScrollableContainer?: Element | null): Player => {
+
+  const clone = (): Player => {
+    const cloned = getPlayer(
+      _this.pathfinder,
+      {x: _this.x, y: _this.y},
+      _this.sprite,
+      _this.coordObservers,
+      characterTextures,
+      gridScrollableContainer,
+    );
+
+    cloned.movementState = _this.movementState;
+
+    return cloned;
+  };
 
   const movementState: Player['movementState'] = {
     action: 'lookingAround',
     direction: MovementDirection.S,
   };
 
-  const setTextures = (movementState?: Player['movementState'], playerSprite?: AnimatedSprite) => {
-    const ps = playerSprite || _this.playerSprite;
+  const setTextures = (movementState?: Player['movementState'], sprite?: AnimatedSprite) => {
+    const ps = sprite || _this.sprite;
     const ms = movementState || _this.movementState;
     // const fps = ms.action === 'running' ? 7 * 10 : 5 * 6; // has to be a multiple of the number of textures.
 
@@ -68,7 +84,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, player
     ps.play();
   };
 
-  setTextures(movementState, playerSprite);
+  setTextures(movementState, sprite);
 
   const moveToCoords = (x: number, y:number, speed: Speed['px']) => {
     const vectorX = x - _this.x;
@@ -91,8 +107,8 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, player
     _this.x = x;
     _this.y = y;
 
-    _this.playerSprite.x = _this.x * speed;
-    _this.playerSprite.y = _this.y * speed;
+    _this.sprite.x = _this.x * speed;
+    _this.sprite.y = _this.y * speed;
 
     _this.coordObservers.map(co => {
       co.x += vectorX * speed;
@@ -162,9 +178,10 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, player
     moveTo,
     pathfinder,
     isChangingDirection: false,
-    playerSprite,
+    sprite,
     coordObservers,
     movementState,
+    clone,
   };
 
   return _this;

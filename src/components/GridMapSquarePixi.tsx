@@ -11,11 +11,9 @@ import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
 
-interface GridMapSquareProps {
-  width?: number;
-  minRoomWidth?: number;
-  maxRoomWidth?: number;
-}
+// interface GridMapSquareProps {
+//   // TODO: add props
+// }
 
 export interface CharacterTextureMap {
   lookingAround: {
@@ -40,16 +38,8 @@ export interface CharacterTextureMap {
   }
 }
 
-export default function GridMapSquarePixi(props: GridMapSquareProps) {
-  // const cellWidth = Math.max(20, Math.min(50, Math.floor((props.width || 0) / 30)));
+export default function GridMapSquarePixi() {
   const cellWidth = 50;
-
-  // TODO: pass in props from some text fields in the parent. Figure out the default values SolidJS style.
-  //  - mapWidth, minRoomWidth/maxRoomWidth, heuristics, speed etc.
-  // const mapWidth = Math.min(Math.floor((props.width || 0) / cellWidth), 50);
-  // const minRoomWidth = props.minRoomWidth || Math.ceil(mapWidth / 20) + 1;
-  // const maxRoomWidth = props.maxRoomWidth || Math.ceil(mapWidth / 10) + 1;
-
   const mapWidth = 50;
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
@@ -268,6 +258,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     console.log('Movement state:');
     console.log(player()?.movementState);
     console.log(`Coordinates: (${player()?.x}, ${player()?.y})`);
+    console.log(`Is changing direction: (${player()?.isChangingDirection})`);
   });
 
   const movePlayerTo = async (cell: GridCell) => {
@@ -279,6 +270,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     player()!.isChangingDirection = true;
 
     await player()!.moveTo(cell, playerSpeed);
+
+    // setPlayer(player()?.clone());
   };
 
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
@@ -301,7 +294,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         {corridorsJsx}
       </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
-      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().stage && pixiApp().view}
+      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view}
         fallback={<h2>Generating cells…</h2>}>
         <div id='grid-scrollable-container'
           class={'overflow-auto inline-block mt-12 ' +
@@ -312,7 +305,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
             height: `${gridCells().length * (cellWidth)}px`,
             'background-color': '#000',
           }}>
-            {pixiApp().view}
+            {pixiApp().view as unknown as Element}
           </div>
         </div>
       </Show>

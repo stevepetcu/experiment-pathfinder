@@ -2,14 +2,14 @@
 
 import binaryHeap, {BinaryHeap} from '../utils/BinaryHeap';
 import {Coords} from './Coords';
-import {CellStatus, Grid, GridCell} from './SquareGrid';
+import { Grid, GridCell} from './SquareGrid';
 
 export interface PathfinderCell {
   gridCell: GridCell;
   f: number;
   g: number;
   h: number;
-  // The weight can give certain cells a higher cost of traversal.
+  // The weight can give certain cells a higher cost of traversal. A weight of 0 means the cell's inaccessible.
   weight: number;
   visited: boolean;
   closed: boolean;
@@ -37,49 +37,49 @@ const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell =
         // bottom left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y + 1,
-        cost: Math.sqrt(2), // Diagonal distance for one block, sqrt(a^2 + b^2), a == b == 1.
+        cost: _this.weight * Math.sqrt(2), // Diagonal distance for one block, sqrt(a^2 + b^2), a == b == 1.
       },
       {
         // bottom right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y + 1,
-        cost: Math.sqrt(2),
+        cost: _this.weight * Math.sqrt(2),
       },
       {
         // top right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y - 1,
-        cost: Math.sqrt(2),
+        cost: _this.weight * Math.sqrt(2),
       },
       {
         // top left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y - 1,
-        cost: Math.sqrt(2),
+        cost: _this.weight * Math.sqrt(2),
       },
       {
         // bottom
         x: _this.gridCell.x,
         y: _this.gridCell.y + 1,
-        cost: 1,
+        cost: _this.weight,
       },
       {
         // right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y,
-        cost: 1,
+        cost: _this.weight,
       },
       {
         // top
         x: _this.gridCell.x,
         y: _this.gridCell.y - 1,
-        cost: 1,
+        cost: _this.weight,
       },
       {
         // left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y,
-        cost: 1,
+        cost: _this.weight,
       },
     ];
   };
@@ -107,7 +107,6 @@ export interface Pathfinder {
   heap: BinaryHeap<PathfinderCell>;
   tracePath: (from: GridCell, to: GridCell) => GridCell[];
   getGridCellAt: (x: number, y: number) => GridCell;
-  setStatusForGridCellAt: (status: CellStatus, x: number, y: number) => GridCell; // TODO: remove?
   options: {
     allowDiagonalMovement: boolean;
     returnClosestCellOnPathFailure: boolean;
@@ -132,7 +131,7 @@ export const getPathfinder = (
   const scoreFn = (element: PathfinderCell) => element.f;
 
   const cells = grid.cells.map(row => row.map(cell => {
-    const weight = cell.isAccessible() ? 0 : 1;
+    const weight = cell.isAccessible() ? 1 : 0;
     return getPathfinderCell(cell, weight);
   }));
 
@@ -150,10 +149,6 @@ export const getPathfinder = (
 
   const getGridCellAt = (x: number, y: number): GridCell => {
     return grid.getCellAt(x, y);
-  };
-
-  const setStatusForGridCellAt = (status: CellStatus, x: number, y: number) => {
-    return grid.setStatusForCellAt(status, x, y);
   };
 
   const getNeighbours = (cell: PathfinderCell): { cell: PathfinderCell, cost: number }[] => {
@@ -193,7 +188,7 @@ export const getPathfinder = (
     let closestCell = start; // Used when options.returnClosestCellOnPathFailure === true.
 
     start.h = heuristic(start, end);
-
+    addDirtyCell(start);
     _this.heap.push(start);
 
     while (_this.heap.size() > 0) {
@@ -266,7 +261,6 @@ export const getPathfinder = (
     tracePath,
     reset,
     getGridCellAt,
-    setStatusForGridCellAt,
     options,
   };
 
@@ -279,9 +273,6 @@ export const getEmptyPathfinder = (grid: Grid): Pathfinder => {
     heap: binaryHeap(() => 0),
     tracePath: () => [],
     getGridCellAt: (x: number, y: number) => {
-      return grid.getCellAt(x, y);
-    },
-    setStatusForGridCellAt: (status: CellStatus, x: number, y: number) => {
       return grid.getCellAt(x, y);
     },
     dirtyCells: [],
