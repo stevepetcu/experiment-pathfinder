@@ -37,9 +37,13 @@ export default function binaryHeap<T>(scoreFn: BinaryHeap<T>['scoreFn']): Binary
   };
 
   const rescore = (element: T) => {
-    sinkDown(_this.heap.indexOf(element));
+    const index = _this.heap.indexOf(element);
 
-    return _this;
+    if (index < 0) {
+      return _this;
+    }
+
+    return sinkDown(index);
   };
 
   const sinkDown = (index: number) => {
@@ -73,9 +77,10 @@ export default function binaryHeap<T>(scoreFn: BinaryHeap<T>['scoreFn']): Binary
     const element = _this.heap[index];
     const elementScore = _this.scoreFn(element);
 
-    while (true) {
+    while (true) { // TODO: find a better condition.
       // Compute the indexes of the child elements.
-      const child2N = (index + 1) << 1, child1N = child2N - 1;
+      const child2N = (index + 1) << 1;
+      const child1N = child2N - 1;
       // This is used to store the new position of the element, if any.
       let swap = null;
       let child1Score;
@@ -101,10 +106,6 @@ export default function binaryHeap<T>(scoreFn: BinaryHeap<T>['scoreFn']): Binary
         if (child2Score < scoreToCompare) {
           swap = child2N;
         }
-
-        // if (child2Score < (swap === null ? elementScore : child1Score)) {
-        //   swap = child2N;
-        // }
       }
 
       // If the element needs to be moved, swap it, and continue.

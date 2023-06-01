@@ -3,7 +3,7 @@ import {Coords} from './Coords';
 import {Corridor, CorridorVector} from './Corridor';
 import {Room, RoomDto} from './Room';
 
-export enum CellStatus {
+export enum CellStatus { // TODO: remove unused statuses, rename EMPTY to ACCESSIBLE
   EMPTY = 'empty',
   PLAYER = 'player',
   OBSTACLE = 'obstacle',
@@ -16,7 +16,7 @@ export interface GridCell {
   y: number;
   status: CellStatus;
   roomId?: RoomDto['id'];
-  isEmpty: () => boolean;
+  isAccessible: () => boolean;
   distanceToCell: (otherCell: GridCell) => number;
   distanceToCoords: (coords: Coords) => number;
 }
@@ -30,13 +30,13 @@ export interface Grid {
 }
 
 const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id']) => {
-  const isEmpty = () => {
-    return _this.status === CellStatus.EMPTY ||
-      _this.status === CellStatus.VISITED;
+  const isAccessible = () => {
+    return _this.status !== CellStatus.OBSTACLE
+    && _this.status !== CellStatus.OUT_OF_BOUNDS;
   };
 
   const distanceToCell = (otherCell: GridCell) => {
-    // TODO: replace this fn in the pathfinder
+    // TODO: replace this fn in the pathfinder.
     return Math.max(
       Math.abs(_this.x - otherCell.x),
       Math.abs(_this.y - otherCell.y),
@@ -44,13 +44,14 @@ const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id'
   };
 
   const distanceToCoords = (coords: Coords) => {
+    // TODO: merge this fn with "distanceToCell".
     return Math.max(
       Math.abs(_this.x - coords.x),
       Math.abs(_this.y - coords.y),
     );
   };
 
-  const _this = {x, y, status, roomId, isEmpty, distanceToCell, distanceToCoords};
+  const _this = {x, y, status, roomId, isAccessible, distanceToCell, distanceToCoords};
 
   return _this;
 };

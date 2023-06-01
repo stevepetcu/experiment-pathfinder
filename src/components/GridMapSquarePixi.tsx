@@ -5,9 +5,9 @@ import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
-import {getEmptyPathfinder, getPathfinder, Heuristics, Pathfinder, PathfinderCell} from '../models/Pathfinder';
+import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
-import {CellStatus, getEmptyGrid, getSquareGrid, Grid, GridCell} from '../models/SquareGrid';
+import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
 
 interface GridMapSquareProps {
@@ -40,8 +40,6 @@ export interface CharacterTextureMap {
 }
 
 export default function GridMapSquarePixi(props: GridMapSquareProps) {
-  const CELL_BORDER_WIDTH = 0.25;
-
   // const cellWidth = Math.max(20, Math.min(50, Math.floor((props.width || 0) / 30)));
   const cellWidth = 50;
 
@@ -69,10 +67,10 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   const [playerStartingPosition, setPlayerStartingPosition] = createSignal<Coords>({x: -1, y: -1});
 
   const emptyGrid = getEmptyGrid();
-  const [grid, setGrid] = createSignal<Grid>(emptyGrid);
-  const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder());
+  // const [grid, setGrid] = createSignal<Grid>(emptyGrid);
+  const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder(emptyGrid));
 
-  const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
+  // const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
 
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
 
@@ -82,7 +80,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
   // const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
 
-  const [timeToTracePath, setTimeToTracePath] = createSignal<number | null>(null);
+  // const [timeToTracePath, setTimeToTracePath] = createSignal<number | null>(null); // TODO
 
   const [pixiApp] = createSignal<PIXI.Application>(
     new PIXI.Application({
@@ -119,13 +117,11 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     setTimeToPlaceCorridors(endCorridors - startCorridors);
 
     // Set the player, the grid, and the pathfinder
-    setGrid(generatedGrid);
-    setPathfinder(getPathfinder(generatedGrid, (element: PathfinderCell) => element.f));
+    setPathfinder(getPathfinder(generatedGrid, {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true}));
 
     setGridCells(generatedGrid.cells);
 
     const container = new PIXI.Container();
-    // pixiApp().stage.addChild(container);
 
     // Add textures:
     // TODO: sort out the caching issue;
@@ -142,6 +138,15 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         sprite.x = cell.x * cellWidth;
         sprite.y = cell.y * cellWidth;
         sprite.zIndex = 1;
+
+        // Opt-in to interactivity
+        sprite.eventMode = 'dynamic';
+        // Shows hand cursor
+        sprite.cursor = 'pointer';
+        sprite.on('pointerdown', () => {
+          movePlayerTo(cell);
+        });
+
         if (cell.status === CellStatus.OBSTACLE) {
           const randomWallTileTextureIndex = randomInt(0, 5);
 
@@ -153,14 +158,6 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
           sprite.texture = tileTextures[`tile-path-${randomPathTileTextureIndex}`];
 
           // sprite.tint = new PIXI.Color('rgb(234 179 8)');
-
-          // Opt-in to interactivity
-          sprite.eventMode = 'dynamic';
-          // Shows hand cursor
-          sprite.cursor = 'pointer';
-          sprite.on('pointerdown', () => {
-            movePlayerTo(cell);
-          });
         }
 
         container.addChild(sprite);
@@ -329,7 +326,7 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
     const playerSprite = new PIXI.AnimatedSprite(charTextures.lookingAround.south, true);
 
     setPlayer(getPlayer(
-      generatedGrid,
+      pathfinder(),
       generatedPlayerStartingPosition,
       playerSprite,
       [light, light2, light3],
@@ -421,35 +418,16 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       return;
     }
 
-    pathfinder().reset();
     //Stop player from moving in the initial direction.
     player()!.isChangingDirection = true;
 
-    const now = Date.now();
-    const path = pathfinder().tracePath(
-      grid().getCellAt(player()!.x, player()!.y),
-      cell,
-      Heuristics.DIAGONAL,
-    );
-    setTimeToTracePath(Date.now() - now);
-
-    if (path.length) {
-      await player()!.takePath(path, true, playerSpeed);
-      setGridCells(player()!.grid.cells);
-    } else {
-      setGridCells(player()!.grid.cells);
-      setUnreachableCell(cell);
-      setTimeout(() => {
-        setUnreachableCell(null);
-      }, 1000);
-    }
+    await player()!.moveTo(cell, playerSpeed);
   };
 
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const playerJsx = <h2>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
-  const tracePathTimeJsx = <h2>Finished tracing last path in {timeToTracePath()}ms.</h2>;
 
   // TODO:
   //  1. Use Tailwind classes everywhere.
@@ -465,11 +443,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
       <Show when={hasPlacedCorridors()} fallback={<h2>Generating corridors…</h2>}>
         {corridorsJsx}
       </Show>
-      <Show when={timeToTracePath() !== null} fallback={<h2>Waiting for player to move…</h2>}>
-        {tracePathTimeJsx}
-      </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
-      <Show when={gridCells().length > 0 && pixiApp()} fallback={<h2>Generating cells…</h2>}>
+      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view} fallback={<h2>Generating cells…</h2>}>
         <div id='grid-scrollable-container'
           class={'overflow-auto inline-block mt-12 ' +
           'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +

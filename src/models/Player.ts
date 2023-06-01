@@ -3,7 +3,8 @@ import {AnimatedSprite, Graphics} from 'pixi.js';
 import {CharacterTextureMap} from '../components/GridMapSquarePixi';
 import randomInt from '../utils/RandomInt';
 import {Coords} from './Coords';
-import {CellStatus, Grid, GridCell} from './SquareGrid';
+import {Pathfinder} from './Pathfinder';
+import { GridCell} from './SquareGrid';
 
 export interface Speed {
   px: number;
@@ -29,8 +30,8 @@ enum MovementDirection {
 export interface Player {
   x: Coords['x'];
   y: Coords['y'];
-  takePath: (path: GridCell[], isChangingDirection: boolean, speed?: Speed) => void;
-  grid: Grid;
+  moveTo: (cell: GridCell, speed: Speed) => void;
+  pathfinder: Pathfinder;
   isChangingDirection: boolean;
   movementState: {
     action: 'running' | 'lookingAround';
@@ -41,7 +42,7 @@ export interface Player {
 }
 
 // TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
-export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: AnimatedSprite,
+export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, playerSprite: AnimatedSprite,
   coordObservers: Graphics[] = [], characterTextures: CharacterTextureMap,
   gridScrollableContainer?: Element | null): Player => {
 
@@ -58,7 +59,7 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: Anim
     const randomNr = randomInt(0, 9);
     const randomLookAroundSpeed = randomNr % 3 === 0 ? 5/200 :
       randomNr % 5 === 0 ? 5 / 150 :
-        5/300; // TODO: use this later to offer an indication of when you're getting close to food.
+        5/300; // TODO: use this later to offer an indication of when you're getting close to food?
 
     const fps = ms.action === 'running' ? 7/20 : randomLookAroundSpeed; // has to be a multiple of the number of textures.
 
@@ -87,12 +88,8 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: Anim
       setTextures();
     }
 
-    _this.grid.setStatusForCellAt(CellStatus.VISITED, _this.x, _this.y);
-
     _this.x = x;
     _this.y = y;
-
-    _this.grid.setStatusForCellAt(CellStatus.PLAYER, _this.x, _this.y);
 
     _this.playerSprite.x = _this.x * speed;
     _this.playerSprite.y = _this.y * speed;
@@ -113,7 +110,15 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: Anim
     return _this.x === cell.x && _this.y === cell.y;
   };
 
-  const takePath = async (path: GridCell[], isNewPath: boolean, speed = DEFAULT_SPEED): Promise<void> => {
+  const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED) => {
+    const path = pathfinder
+      .tracePath(pathfinder.getGridCellAt(_this.x, _this.y), cell)
+      .reverse();
+
+    await takePath(path, true, speed);
+  };
+
+  const takePath = async (path: GridCell[], isNewPath: boolean, speed: Speed): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, speed.ms));
 
     if (isNewPath) {
@@ -137,7 +142,7 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: Anim
       return;
     }
 
-    if (!nextStep.isEmpty()) {
+    if (!nextStep.isAccessible()) {
       console.debug('Inaccessible cell.');
       return;
     }
@@ -146,27 +151,21 @@ export const getPlayer = (grid: Grid, startingCoords: Coords, playerSprite: Anim
       return;
     }
 
-    // setTimeout(() => {
     moveToCoords(nextStep.x, nextStep.y, speed.px);
-    // Add a pause to make the thing's movement perceptible to puny human eyes.
-    // await new Promise(resolve => setTimeout(resolve, 50));
 
     await takePath(path, false, speed);
-    // }, 50);
   };
 
   const _this = {
     x: startingCoords.x,
     y: startingCoords.y,
-    takePath,
-    grid,
+    moveTo,
+    pathfinder,
     isChangingDirection: false,
     playerSprite,
     coordObservers,
     movementState,
   };
-
-  _this.grid.setStatusForCellAt(CellStatus.PLAYER, startingCoords.x, startingCoords.y);
 
   return _this;
 };
