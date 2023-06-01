@@ -1,10 +1,9 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import * as PIXI from 'pixi.js';
-import {BLEND_MODES, MSAA_QUALITY, Texture} from 'pixi.js';
+import {AnimatedSprite, BLEND_MODES, Graphics, MSAA_QUALITY, Texture} from 'pixi.js';
 import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
-import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
@@ -46,6 +45,7 @@ export default function GridMapSquarePixi() {
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
 
+  // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
   const [hasPlacedRooms, setHasPlacedRooms] = createSignal(false);
   const [timeToPlaceRooms, setTimeToPlaceRooms] = createSignal(0);
@@ -54,24 +54,22 @@ export default function GridMapSquarePixi() {
   const [hasPlacedCorridors, setHasPlacedCorridors] = createSignal(false);
   const [timeToPlaceCorridors, setTimeToPlaceCorridors] = createSignal(0);
 
-
-  const [playerStartingPosition, setPlayerStartingPosition] = createSignal<Coords>({x: -1, y: -1});
-
-  const emptyGrid = getEmptyGrid();
-  // const [grid, setGrid] = createSignal<Grid>(emptyGrid);
-  const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder(emptyGrid));
-
-  // const [unreachableCell, setUnreachableCell] = createSignal<GridCell | null>(null);
-
-  const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
-
-  const [player, setPlayer] = createSignal<Player>();
-
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
-  // const [isPlayerMoving, setIsPlayerMoving] = createSignal(false);
 
-  // const [timeToTracePath, setTimeToTracePath] = createSignal<number | null>(null); // TODO
+  const emptyGrid = getEmptyGrid();
+  const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder(emptyGrid));
+
+
+  const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
+  // TODO: end
+
+  const [isUpdatedGameState, setIsUpdatedGameState] = createSignal(false);
+
+  let player: Player;
+  let playerSprite: AnimatedSprite;
+  let characterTextures: CharacterTextureMap;
+  const playerCoordObservers: Graphics[] = [];
 
   const [pixiApp] = createSignal<PIXI.Application>(
     new PIXI.Application({
@@ -96,8 +94,6 @@ export default function GridMapSquarePixi() {
     // Generate and set player position:
     const randomRoomIndex = randomInt(0, generatedRooms.length);
     const generatedPlayerStartingPosition = generatePlayerStartingPosition(generatedRooms[randomRoomIndex]);
-    setPlayerStartingPosition(generatedPlayerStartingPosition);
-
 
     // Generate and place corridors:
     const startCorridors = Date.now();
@@ -165,34 +161,23 @@ export default function GridMapSquarePixi() {
     const light = new PIXI.Graphics();
     const light2 = new PIXI.Graphics();
     const light3 = new PIXI.Graphics();
-
-    setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
+    playerCoordObservers.push(light, light2, light3);
 
     const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
     const charRunningTextures = await PIXI.Assets.loadBundle('character-running');
-    const textures = charTextures(charLookingAroundTextures, charRunningTextures);
-    const playerSprite = new PIXI.AnimatedSprite(textures.lookingAround.south, true);
+    characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
+    playerSprite = new PIXI.AnimatedSprite(characterTextures.lookingAround.south, true);
 
-    setPlayer(getPlayer(
+    player = getPlayer(
       pathfinder(),
       generatedPlayerStartingPosition,
-      playerSprite,
-      [light, light2, light3],
-      textures,
-      gridScrollableContainer(),
-    ));
-
-    // Always keep the character in the center of the scrollable div when it's moving
-    // (but allow scrolling inside the div when the character is not moving)
-    gridScrollableContainer()?.scroll({
-      left: (player()?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
-      top: (player()?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
-    });
+      setIsUpdatedGameState,
+    );
 
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
-    playerSprite.x = (player()?.x || -1) * cellWidth;
-    playerSprite.y = (player()?.y || -1) * cellWidth;
+    playerSprite.x = (player?.x || -1) * cellWidth;
+    playerSprite.y = (player?.y || -1) * cellWidth;
     playerSprite.zIndex = 10;
 
     container.addChild(playerSprite);
@@ -244,6 +229,14 @@ export default function GridMapSquarePixi() {
     container.addChild(light3);
 
     pixiApp().stage.addChild(container);
+
+    setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
+    // Always keep the character in the center of the scrollable div when it's moving
+    // (but allow scrolling inside the div when the character is not moving)
+    gridScrollableContainer()?.scroll({
+      left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
+      top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
+    });
   });
 
   onCleanup(() => {
@@ -255,28 +248,50 @@ export default function GridMapSquarePixi() {
   });
 
   createEffect(() => {
-    console.log('Movement state:');
-    console.log(player()?.movementState);
-    console.log(`Coordinates: (${player()?.x}, ${player()?.y})`);
-    console.log(`Is changing direction: (${player()?.isChangingDirection})`);
+    if (player) {
+      console.log(isUpdatedGameState());
+      console.log('Movement state:');
+      console.log(player.movementState);
+      console.log(`Coordinates: (${player.x}, ${player.y})`);
+      console.log(`Is changing direction: (${player.isChangingDirection})`);
+
+      // Animate player sprite
+      const ms = player.movementState;
+      const fps = ms.action === 'running' ? 7/20 : 5/250; // has to be a multiple of the number of textures.
+      playerSprite.textures = characterTextures[ms.action][ms.direction];
+      playerSprite.animationSpeed = fps;
+      playerSprite.play();
+      playerSprite.x = player.x * playerSpeed.px;
+      playerSprite.y = player.y * playerSpeed.px;
+
+      // Animate player visibility area/lights
+      playerCoordObservers.map(co => {
+        co.x += ms.vectorX * playerSpeed.px;
+        co.y += ms.vectorY * playerSpeed.px;
+      });
+    }
+
+    if (gridScrollableContainer()) {
+      gridScrollableContainer()!.scroll({
+        left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
+        top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
+      });
+    }
   });
 
   const movePlayerTo = async (cell: GridCell) => {
-    if (!player()) {
+    if (!player) {
       return;
     }
 
     //Stop player from moving in the initial direction.
-    player()!.isChangingDirection = true;
+    player!.isChangingDirection = true;
 
-    await player()!.moveTo(cell, playerSpeed);
-
-    // setPlayer(player()?.clone());
+    await player!.moveTo(cell, playerSpeed);
   };
 
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
-  const playerJsx = <h2>Player starting position: ({playerStartingPosition().x}, {playerStartingPosition().y}).</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
 
   // TODO:
@@ -287,19 +302,16 @@ export default function GridMapSquarePixi() {
       <Show when={hasPlacedRooms()} fallback={<h2>Generating {mapWidth}x{mapWidth} map…</h2>}>
         {roomsJsx}
       </Show>
-      <Show when={hasPlacedRooms() && playerStartingPosition().x > -1} fallback={<h2>Placing player…</h2>}>
-        {playerJsx}
-      </Show>
       <Show when={hasPlacedCorridors()} fallback={<h2>Generating corridors…</h2>}>
         {corridorsJsx}
       </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view}
         fallback={<h2>Generating cells…</h2>}>
-        <div id='grid-scrollable-container'
+        <div id="grid-scrollable-container"
           class={'overflow-auto inline-block mt-12 ' +
-          'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +
-          'max-h-[500px] md:max-h-[800px]'}>
+               'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +
+               'max-h-[500px] md:max-h-[800px]'}>
           <div style={{
             width: `${gridCells().length * (cellWidth)}px`,
             height: `${gridCells().length * (cellWidth)}px`,

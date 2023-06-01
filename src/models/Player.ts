@@ -1,7 +1,5 @@
-import {AnimatedSprite, Graphics} from 'pixi.js';
+import {Setter} from 'solid-js/types/reactive/signal';
 
-import {CharacterTextureMap} from '../components/GridMapSquarePixi';
-import randomInt from '../utils/RandomInt';
 import {Coords} from './Coords';
 import {Pathfinder} from './Pathfinder';
 import { GridCell} from './SquareGrid';
@@ -35,60 +33,34 @@ export interface Player {
   isChangingDirection: boolean;
   movementState: {
     action: 'running' | 'lookingAround';
-    direction: MovementDirection
+    direction: MovementDirection;
+    vectorX: number;
+    vectorY: number;
   }
-  sprite: AnimatedSprite;
-  coordObservers: Graphics[];
-  clone: () => Player;
 }
 
 // TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
-export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, sprite: AnimatedSprite,
-  coordObservers: Graphics[] = [], characterTextures: CharacterTextureMap,
-  gridScrollableContainer?: Element | null): Player => {
+export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
+  gameStateUpdateCallback: Setter<boolean>): Player => {
 
-  const clone = (): Player => {
-    const cloned = getPlayer(
-      _this.pathfinder,
-      {x: _this.x, y: _this.y},
-      _this.sprite,
-      _this.coordObservers,
-      characterTextures,
-      gridScrollableContainer,
-    );
-
-    cloned.movementState = _this.movementState;
-
-    return cloned;
+  const updateGameState = () => {
+    // This feels like a travesty of SolidJS, but I'm open to better ideas, or confirmation that this is the only way.
+    gameStateUpdateCallback(currentState => !currentState);
   };
 
   const movementState: Player['movementState'] = {
     action: 'lookingAround',
     direction: MovementDirection.S,
+    vectorX: 0,
+    vectorY: 0,
   };
 
-  const setTextures = (movementState?: Player['movementState'], sprite?: AnimatedSprite) => {
-    const ps = sprite || _this.sprite;
-    const ms = movementState || _this.movementState;
-    // const fps = ms.action === 'running' ? 7 * 10 : 5 * 6; // has to be a multiple of the number of textures.
-
-    const randomNr = randomInt(0, 9);
-    const randomLookAroundSpeed = randomNr % 3 === 0 ? 5/200 :
-      randomNr % 5 === 0 ? 5 / 150 :
-        5/300; // TODO: use this later to offer an indication of when you're getting close to food?
-
-    const fps = ms.action === 'running' ? 7/20 : randomLookAroundSpeed; // has to be a multiple of the number of textures.
-
-    ps.textures = characterTextures[ms.action][ms.direction];
-    ps.animationSpeed = fps;
-    ps.play();
-  };
-
-  setTextures(movementState, sprite);
-
-  const moveToCoords = (x: number, y:number, speed: Speed['px']) => {
+  const moveToCoords = (x: number, y:number) => {
     const vectorX = x - _this.x;
     const vectorY = y - _this.y;
+    _this.movementState.vectorX = vectorX;
+    _this.movementState.vectorY = vectorY;
+
     const direction = vectorX === 0 && vectorY === -1 ? MovementDirection.N :
       vectorX === 1 && vectorY === -1 ? MovementDirection.NE :
         vectorX === 1 && vectorY === 0 ? MovementDirection.E :
@@ -101,29 +73,22 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, sprite
     if (direction !== _this.movementState.direction || _this.movementState.action !== 'running') {
       _this.movementState.direction = direction;
       _this.movementState.action = 'running';
-      setTextures();
     }
 
     _this.x = x;
     _this.y = y;
 
-    _this.sprite.x = _this.x * speed;
-    _this.sprite.y = _this.y * speed;
-
-    _this.coordObservers.map(co => {
-      co.x += vectorX * speed;
-      co.y += vectorY * speed;
-    });
-
-    gridScrollableContainer?.scroll({
-      // TODO: Move this outta here!
-      left: _this.x * speed - gridScrollableContainer?.clientWidth / 2,
-      top: _this.y * speed - gridScrollableContainer?.clientHeight / 2,
-    });
+    updateGameState();
   };
 
   const isAt = (cell: GridCell): boolean => {
     return _this.x === cell.x && _this.y === cell.y;
+  };
+
+  const stopMoving = () => {
+    _this.movementState.action = 'lookingAround';
+    _this.movementState.vectorX = 0;
+    _this.movementState.vectorY = 0;
   };
 
   const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED) => {
@@ -146,28 +111,31 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, sprite
 
     if (nextStep === undefined) {
       console.debug('Unreachable, or reached position!');
-      _this.movementState.action = 'lookingAround';
-      setTextures();
+      stopMoving();
+      updateGameState();
       return;
     }
 
     if (isAt(nextStep)) {
       console.debug('Already at location.');
-      _this.movementState.action = 'lookingAround';
-      setTextures();
+      stopMoving();
+      updateGameState();
       return;
     }
 
     if (!nextStep.isAccessible()) {
       console.debug('Inaccessible cell.');
+      stopMoving();
+      updateGameState();
       return;
     }
 
     if (_this.isChangingDirection && !isNewPath) {
+      updateGameState();
       return;
     }
 
-    moveToCoords(nextStep.x, nextStep.y, speed.px);
+    moveToCoords(nextStep.x, nextStep.y);
 
     await takePath(path, false, speed);
   };
@@ -178,10 +146,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords, sprite
     moveTo,
     pathfinder,
     isChangingDirection: false,
-    sprite,
-    coordObservers,
     movementState,
-    clone,
   };
 
   return _this;
