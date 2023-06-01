@@ -11,24 +11,15 @@ export interface PathfinderCell {
   h: number;
   // The weight can give certain cells a higher cost of traversal.
   weight: number;
-  getCostFrom: (otherCell: PathfinderCell) => number;
   visited: boolean;
   closed: boolean;
   parent: PathfinderCell | null;
   isAccessible: () => boolean;
   reset: () => void;
-  getNeighbourCoordinates: () => Coords[];
+  getNeighbourCoordinates: () => (Coords & { cost: number })[];
 }
 
 const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell => {
-  const getCostFrom = (otherCell: PathfinderCell) => {
-    // Take diagonal weight into consideration.
-    if (otherCell && otherCell.gridCell.x != _this.gridCell.x && otherCell.gridCell.y != _this.gridCell.y) {
-      return _this.weight * Math.sqrt(2);
-    }
-    return _this.weight;
-  };
-
   const isAccessible = () => gridCell.isAccessible();
 
   const reset = () => {
@@ -40,47 +31,55 @@ const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell =
     _this.parent = null;
   };
 
-  const getNeighbourCoordinates = (): Coords[] => {
+  const getNeighbourCoordinates = (): (Coords & { cost: number })[] => {
     return [
       {
         // bottom left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y + 1,
+        cost: Math.sqrt(2), // Diagonal distance for one block, sqrt(a^2 + b^2), a == b == 1.
       },
       {
         // bottom right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y + 1,
+        cost: Math.sqrt(2),
       },
       {
         // top right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y - 1,
+        cost: Math.sqrt(2),
       },
       {
         // top left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y - 1,
+        cost: Math.sqrt(2),
       },
       {
         // bottom
         x: _this.gridCell.x,
         y: _this.gridCell.y + 1,
+        cost: 1,
       },
       {
         // right
         x: _this.gridCell.x + 1,
         y: _this.gridCell.y,
+        cost: 1,
       },
       {
         // top
         x: _this.gridCell.x,
         y: _this.gridCell.y - 1,
+        cost: 1,
       },
       {
         // left
         x: _this.gridCell.x - 1,
         y: _this.gridCell.y,
+        cost: 1,
       },
     ];
   };
@@ -94,7 +93,6 @@ const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell =
     visited: false,
     closed: false,
     parent: null,
-    getCostFrom,
     isAccessible,
     reset,
     getNeighbourCoordinates,
@@ -113,7 +111,7 @@ export interface Pathfinder {
   options: {
     allowDiagonalMovement: boolean;
     returnClosestCellOnPathFailure: boolean;
-  }
+  };
 }
 
 export const getPathfinder = (
@@ -126,13 +124,10 @@ export const getPathfinder = (
   };
 
   const calcDiagonalDistance = (from: PathfinderCell, to: PathfinderCell) => {
-    const D = 1;
-    const D2 = Math.sqrt(2);
     const deltaX = Math.abs(from.gridCell.x - to.gridCell.x);
     const deltaY = Math.abs(from.gridCell.y - to.gridCell.y);
 
-    // TODO: try this formula return min(delta_x, delta_y) * sqrt(2) + abs(delta_x - delta_y)
-    return (D * (deltaX + deltaY)) + ((D2 - (2 * D)) * Math.min(deltaX, deltaY));
+    return Math.min(deltaX, deltaY) * Math.sqrt(2) + Math.abs(deltaX - deltaY);
   };
   const scoreFn = (element: PathfinderCell) => element.f;
 
@@ -161,12 +156,15 @@ export const getPathfinder = (
     return grid.setStatusForCellAt(status, x, y);
   };
 
-  const getNeighbours = (cell: PathfinderCell): PathfinderCell[] => {
+  const getNeighbours = (cell: PathfinderCell): { cell: PathfinderCell, cost: number }[] => {
     const neighbourCoords = cell.getNeighbourCoordinates();
-    const neighbours: PathfinderCell[] = [];
+    const neighbours: { cell: PathfinderCell, cost: number }[] = [];
     neighbourCoords.map(nc => {
       if (_this.cells[nc.y][nc.x].isAccessible()) {
-        neighbours.push(_this.cells[nc.y][nc.x]);
+        neighbours.push({
+          cell: _this.cells[nc.y][nc.x],
+          cost: nc.cost,
+        });
       }
     });
 
@@ -192,7 +190,7 @@ export const getPathfinder = (
     const start: PathfinderCell = _this.cells[from.y][from.x];
     const end: PathfinderCell = _this.cells[to.y][to.x];
 
-    let closestNode = start; // Used when options.returnClosestCellOnPathFailure === true.
+    let closestCell = start; // Used when options.returnClosestCellOnPathFailure === true.
 
     start.h = heuristic(start, end);
 
@@ -216,46 +214,49 @@ export const getPathfinder = (
       for (let i = 0, il = neighbours.length; i < il; i++) {
         const neighbour = neighbours[i];
 
-        if (neighbour.closed || !neighbour.isAccessible()) {
-          // Not a valid node to process, skip to next neighbor.
+        if (neighbour.cell.closed || !neighbour.cell.isAccessible()) {
+          // Not a valid node to process, skip to next neighbour.
           continue;
         }
 
         // The g score is the shortest distance from start to current node.
         // We need to check if the path we have arrived at this neighbour is the shortest one we have seen yet.
-        const gScore = currentElement.g + neighbour.getCostFrom(currentElement);
-        const beenVisited = neighbour.visited;
+        const gScore = currentElement.g + neighbour.cost;
+        const beenVisited = neighbour.cell.visited;
 
-        if (!beenVisited || gScore < neighbour.g) {
+        if (!beenVisited || gScore < neighbour.cell.g) {
           // Found an optimal (so far) path to this node. Take score for node to see how good it is.
-          neighbour.visited = true;
-          neighbour.parent = currentElement;
-          neighbour.h = neighbour.h || heuristic(neighbour, end);
-          neighbour.g = gScore;
-          neighbour.f = neighbour.g + neighbour.h;
-          addDirtyCell(neighbour);
+          neighbour.cell.visited = true;
+          neighbour.cell.parent = currentElement;
+          neighbour.cell.h = neighbour.cell.h || heuristic(neighbour.cell, end);
+          neighbour.cell.g = gScore;
+          neighbour.cell.f = neighbour.cell.g + neighbour.cell.h;
+          addDirtyCell(neighbour.cell);
 
           if (options.returnClosestCellOnPathFailure) {
-            // If the neighbour is closer than the current closestNode or if it's equally close but has
+            // If the neighbour is closer than the current closestCell or if it's equally close but has
             // a cheaper path than the current closest node, then it becomes the closest node.
-            if (neighbour.h < closestNode.h || (neighbour.h === closestNode.h && neighbour.g < closestNode.g)) {
-              closestNode = neighbour;
+            if (
+              neighbour.cell.h < closestCell.h ||
+              (neighbour.cell.h === closestCell.h && neighbour.cell.g < closestCell.g)
+            ) {
+              closestCell = neighbour.cell;
             }
           }
 
           if (!beenVisited) {
             // Pushing to heap will put it in proper place based on the 'f' value.
-            _this.heap.push(neighbour);
+            _this.heap.push(neighbour.cell);
           } else {
             // Already seen the node, but since it has been rescored we need to reorder it in the heap
-            _this.heap.rescore(neighbour);
+            _this.heap.rescore(neighbour.cell);
           }
         }
       }
     }
 
     // No result was found - empty array signifies failure to find path.
-    return options.returnClosestCellOnPathFailure? pathTo(closestNode) : [];
+    return options.returnClosestCellOnPathFailure ? pathTo(closestCell) : [];
   };
 
   const _this = {
@@ -277,8 +278,12 @@ export const getEmptyPathfinder = (grid: Grid): Pathfinder => {
     cells: [[]],
     heap: binaryHeap(() => 0),
     tracePath: () => [],
-    getGridCellAt: (x: number, y: number) => { return grid.getCellAt(x, y); },
-    setStatusForGridCellAt: (status: CellStatus, x: number, y: number) => { return grid.getCellAt(x, y); },
+    getGridCellAt: (x: number, y: number) => {
+      return grid.getCellAt(x, y);
+    },
+    setStatusForGridCellAt: (status: CellStatus, x: number, y: number) => {
+      return grid.getCellAt(x, y);
+    },
     dirtyCells: [],
     options: {
       allowDiagonalMovement: true,

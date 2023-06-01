@@ -3,6 +3,7 @@ import * as PIXI from 'pixi.js';
 import {BLEND_MODES, MSAA_QUALITY, Texture} from 'pixi.js';
 import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
+import charTextures from '../assets/CharTextures';
 import {Coords} from '../models/Coords';
 import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
@@ -179,158 +180,15 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
 
     const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
     const charRunningTextures = await PIXI.Assets.loadBundle('character-running');
-
-    const charTextures = {
-      lookingAround: {
-        north: [
-          charLookingAroundTextures['north-0'],
-          charLookingAroundTextures['north-2'],
-          charLookingAroundTextures['north-4'],
-          charLookingAroundTextures['north-3'],
-          charLookingAroundTextures['north-1'],
-        ],
-        northeast: [
-          charLookingAroundTextures['northeast-0'],
-          charLookingAroundTextures['northeast-2'],
-          charLookingAroundTextures['northeast-4'],
-          charLookingAroundTextures['northeast-3'],
-          charLookingAroundTextures['northeast-1'],
-        ],
-        east: [
-          charLookingAroundTextures['east-0'],
-          charLookingAroundTextures['east-2'],
-          charLookingAroundTextures['east-4'],
-          charLookingAroundTextures['east-3'],
-          charLookingAroundTextures['east-1'],
-        ],
-        southeast: [
-          charLookingAroundTextures['southeast-0'],
-          charLookingAroundTextures['southeast-2'],
-          charLookingAroundTextures['southeast-4'],
-          charLookingAroundTextures['southeast-3'],
-          charLookingAroundTextures['southeast-1'],
-        ],
-        south: [
-          charLookingAroundTextures['south-0'],
-          charLookingAroundTextures['south-2'],
-          charLookingAroundTextures['south-4'],
-          charLookingAroundTextures['south-3'],
-          charLookingAroundTextures['south-1'],
-        ],
-        southwest: [
-          charLookingAroundTextures['southwest-0'],
-          charLookingAroundTextures['southwest-2'],
-          charLookingAroundTextures['southwest-4'],
-          charLookingAroundTextures['southwest-3'],
-          charLookingAroundTextures['southwest-1'],
-        ],
-        west: [
-          charLookingAroundTextures['west-0'],
-          charLookingAroundTextures['west-2'],
-          charLookingAroundTextures['west-4'],
-          charLookingAroundTextures['west-3'],
-          charLookingAroundTextures['west-1'],
-        ],
-        northwest: [
-          charLookingAroundTextures['northwest-0'],
-          charLookingAroundTextures['northwest-2'],
-          charLookingAroundTextures['northwest-4'],
-          charLookingAroundTextures['northwest-3'],
-          charLookingAroundTextures['northwest-1'],
-        ],
-      },
-      running: {
-        north: [
-          charRunningTextures['north-0'],
-          charRunningTextures['north-1'],
-          charRunningTextures['north-2'],
-          charRunningTextures['north-3'],
-          charRunningTextures['north-4'],
-          charRunningTextures['north-5'],
-          charRunningTextures['north-6'],
-          charRunningTextures['north-7'],
-        ],
-        northeast: [
-          charRunningTextures['northeast-0'],
-          charRunningTextures['northeast-1'],
-          charRunningTextures['northeast-2'],
-          charRunningTextures['northeast-3'],
-          charRunningTextures['northeast-4'],
-          charRunningTextures['northeast-5'],
-          charRunningTextures['northeast-6'],
-          charRunningTextures['northeast-7'],
-        ],
-        east: [
-          charRunningTextures['east-0'],
-          charRunningTextures['east-1'],
-          charRunningTextures['east-2'],
-          charRunningTextures['east-3'],
-          charRunningTextures['east-4'],
-          charRunningTextures['east-5'],
-          charRunningTextures['east-6'],
-          charRunningTextures['east-7'],
-        ],
-        southeast: [
-          charRunningTextures['southeast-0'],
-          charRunningTextures['southeast-1'],
-          charRunningTextures['southeast-2'],
-          charRunningTextures['southeast-3'],
-          charRunningTextures['southeast-4'],
-          charRunningTextures['southeast-5'],
-          charRunningTextures['southeast-6'],
-          charRunningTextures['southeast-7'],
-        ],
-        south: [
-          charRunningTextures['south-0'],
-          charRunningTextures['south-1'],
-          charRunningTextures['south-2'],
-          charRunningTextures['south-3'],
-          charRunningTextures['south-4'],
-          charRunningTextures['south-5'],
-          charRunningTextures['south-6'],
-          charRunningTextures['south-7'],
-        ],
-        southwest: [
-          charRunningTextures['southwest-0'],
-          charRunningTextures['southwest-1'],
-          charRunningTextures['southwest-2'],
-          charRunningTextures['southwest-3'],
-          charRunningTextures['southwest-4'],
-          charRunningTextures['southwest-5'],
-          charRunningTextures['southwest-6'],
-          charRunningTextures['southwest-7'],
-        ],
-        west: [
-          charRunningTextures['west-0'],
-          charRunningTextures['west-1'],
-          charRunningTextures['west-2'],
-          charRunningTextures['west-3'],
-          charRunningTextures['west-4'],
-          charRunningTextures['west-5'],
-          charRunningTextures['west-6'],
-          charRunningTextures['west-7'],
-        ],
-        northwest: [
-          charRunningTextures['northwest-0'],
-          charRunningTextures['northwest-1'],
-          charRunningTextures['northwest-2'],
-          charRunningTextures['northwest-3'],
-          charRunningTextures['northwest-4'],
-          charRunningTextures['northwest-5'],
-          charRunningTextures['northwest-6'],
-          charRunningTextures['northwest-7'],
-        ],
-      },
-    };
-
-    const playerSprite = new PIXI.AnimatedSprite(charTextures.lookingAround.south, true);
+    const textures = charTextures(charLookingAroundTextures, charRunningTextures);
+    const playerSprite = new PIXI.AnimatedSprite(textures.lookingAround.south, true);
 
     setPlayer(getPlayer(
       pathfinder(),
       generatedPlayerStartingPosition,
       playerSprite,
       [light, light2, light3],
-      charTextures,
+      textures,
       gridScrollableContainer(),
     ));
 
@@ -407,13 +265,12 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
   });
 
   createEffect(() => {
-    // TODO: Do a bunch of things, like setting the player sprite texture,
-    //  moving the player sprite, moving the browser window etc. here,
-    //  instead of inside the Player object!
+    console.log('Movement state:');
     console.log(player()?.movementState);
+    console.log(`Coordinates: (${player()?.x}, ${player()?.y})`);
   });
 
-  const movePlayerTo= async (cell: GridCell) => {
+  const movePlayerTo = async (cell: GridCell) => {
     if (!player()) {
       return;
     }
@@ -444,7 +301,8 @@ export default function GridMapSquarePixi(props: GridMapSquareProps) {
         {corridorsJsx}
       </Show>
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
-      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view} fallback={<h2>Generating cells…</h2>}>
+      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().stage && pixiApp().view}
+        fallback={<h2>Generating cells…</h2>}>
         <div id='grid-scrollable-container'
           class={'overflow-auto inline-block mt-12 ' +
           'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +
