@@ -12,9 +12,11 @@ const LEVEL_TWO_ITERATION_COUNT_THRESHOLD = LEVEL_ONE_ITERATION_COUNT_THRESHOLD 
 const MAGIC_TO_REPLACE_LATER = 333;
 const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
 
-export const generatePlayerStartingPosition = (inRoom: Room): Coords => {
-  const x = randomInt(inRoom.leftX(), inRoom.rightX() + 1); // randomInt max is exclusive
-  const y = randomInt(inRoom.topY(), inRoom.bottomY() + 1); // randomInt max is exclusive
+export const generateRandomPosition = (rooms: Room[]): Coords => {
+  const randomRoom = rooms[randomInt(0, rooms.length)];
+
+  const x = randomInt(randomRoom.leftX(), randomRoom.rightX() + 1); // randomInt max is exclusive
+  const y = randomInt(randomRoom.topY(), randomRoom.bottomY() + 1); // randomInt max is exclusive
 
   return {x, y};
 };

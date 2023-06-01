@@ -1,5 +1,6 @@
-import {Setter} from 'solid-js/types/reactive/signal';
+import {UUID} from 'crypto';
 
+import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {Coords} from './Coords';
 import {Pathfinder} from './Pathfinder';
 import { GridCell} from './SquareGrid';
@@ -26,6 +27,7 @@ enum MovementDirection {
 }
 
 export interface Player {
+  id: UUID,
   x: Coords['x'];
   y: Coords['y'];
   moveTo: (cell: GridCell, speed: Speed) => void;
@@ -36,16 +38,27 @@ export interface Player {
     direction: MovementDirection;
     vectorX: number;
     vectorY: number;
-  }
+  },
+  isAlive: boolean
 }
 
-// TODO: extract everything apart from the grid and starting coords into a createEffect on the parent.
+// TODO: rename this thing to "Character" and "getCharacter" etc.?
 export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
-  gameStateUpdateCallback: Setter<boolean>): Player => {
+  ssmb: SimpleSequenceMessageBroker): Player => {
+
+  const id = crypto.randomUUID();
 
   const updateGameState = () => {
-    // This feels like a travesty of SolidJS, but I'm open to better ideas, or confirmation that this is the only way.
-    gameStateUpdateCallback(currentState => !currentState);
+
+    console.log('aici');
+    console.log(_this);
+    ssmb.publish({
+      id: _this.id,
+      movementState: _this.movementState,
+      x: _this.x,
+      y: _this.y,
+      isAlive: _this.isAlive,
+    });
   };
 
   const movementState: Player['movementState'] = {
@@ -89,6 +102,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     _this.movementState.action = 'lookingAround';
     _this.movementState.vectorX = 0;
     _this.movementState.vectorY = 0;
+    updateGameState();
   };
 
   const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED) => {
@@ -112,26 +126,22 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     if (nextStep === undefined) {
       console.debug('Unreachable, or reached position!');
       stopMoving();
-      updateGameState();
       return;
     }
 
     if (isAt(nextStep)) {
       console.debug('Already at location.');
       stopMoving();
-      updateGameState();
       return;
     }
 
     if (!nextStep.isAccessible()) {
       console.debug('Inaccessible cell.');
       stopMoving();
-      updateGameState();
       return;
     }
 
     if (_this.isChangingDirection && !isNewPath) {
-      updateGameState();
       return;
     }
 
@@ -140,14 +150,19 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     await takePath(path, false, speed);
   };
 
+  // TODO: refactor models – most of them don't need a _this (unless I need to call another object on _this object).
   const _this = {
+    id,
     x: startingCoords.x,
     y: startingCoords.y,
     moveTo,
     pathfinder,
     isChangingDirection: false,
     movementState,
+    isAlive: true,
   };
+
+  updateGameState();
 
   return _this;
 };

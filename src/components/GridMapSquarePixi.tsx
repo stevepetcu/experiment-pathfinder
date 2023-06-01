@@ -1,14 +1,16 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
+import {UUID} from 'crypto';
 import * as PIXI from 'pixi.js';
-import {AnimatedSprite, BLEND_MODES, Graphics, MSAA_QUALITY, Texture} from 'pixi.js';
-import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {AnimatedSprite, BLEND_MODES, Graphics, MSAA_QUALITY, Sprite, Texture} from 'pixi.js';
+import { createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
-import {generateCorridors, generatePlayerStartingPosition, generateRooms} from '../models/Map';
+import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
-import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
+import { DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import randomInt from '../utils/RandomInt';
+import getSSMB, {ModelUpdateMessage} from '../utils/SimpleSequenceMessageBroker';
 
 // interface GridMapSquareProps {
 //   // TODO: add props
@@ -38,12 +40,16 @@ export interface CharacterTextureMap {
 }
 
 export default function GridMapSquarePixi() {
+  // These settings are not user-configurable
   const cellWidth = 50;
   const mapWidth = 50;
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
+  const numberOfCritters = 5;
+  // End "These settings are not user-configurable"
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
+  const critterSpeed: Speed = {ms: 1000, px: cellWidth};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -62,14 +68,18 @@ export default function GridMapSquarePixi() {
 
 
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
-  // TODO: end
-
-  const [isUpdatedGameState, setIsUpdatedGameState] = createSignal(false);
+  // TODO: end "do I need signals here?"
 
   let player: Player;
   let playerSprite: AnimatedSprite;
   let characterTextures: CharacterTextureMap;
   const playerCoordObservers: Graphics[] = [];
+
+  const critters: Player[] = [];
+  const critterSprites: { id: UUID, sprite: Sprite }[] = [];
+
+  const playerSSMB = getSSMB();
+  const critterSSM = getSSMB();
 
   const [pixiApp] = createSignal<PIXI.Application>(
     new PIXI.Application({
@@ -92,8 +102,7 @@ export default function GridMapSquarePixi() {
     setTimeToPlaceRooms(endRooms - startRooms);
 
     // Generate and set player position:
-    const randomRoomIndex = randomInt(0, generatedRooms.length);
-    const generatedPlayerStartingPosition = generatePlayerStartingPosition(generatedRooms[randomRoomIndex]);
+    const playerRandomStartingPosition = generateRandomPosition(generatedRooms);
 
     // Generate and place corridors:
     const startCorridors = Date.now();
@@ -105,6 +114,10 @@ export default function GridMapSquarePixi() {
 
     // Set the player, the grid, and the pathfinder
     setPathfinder(getPathfinder(generatedGrid, {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true}));
+
+    // TODO: arrange the code a bit better. These guys have to be created after we've added the subscription to
+    //  the message broker, lest they get born "inanimate". I must figure out why things break if I move this below.
+    player = getPlayer(pathfinder(), playerRandomStartingPosition, playerSSMB);
 
     setGridCells(generatedGrid.cells);
 
@@ -143,8 +156,6 @@ export default function GridMapSquarePixi() {
           const randomPathTileTextureIndex = randomInt(0, 6);
 
           sprite.texture = tileTextures[`tile-path-${randomPathTileTextureIndex}`];
-
-          // sprite.tint = new PIXI.Color('rgb(234 179 8)');
         }
 
         container.addChild(sprite);
@@ -159,8 +170,11 @@ export default function GridMapSquarePixi() {
     fogOfWar.filters = [filter];
 
     const light = new PIXI.Graphics();
+    light.zIndex = 10;
     const light2 = new PIXI.Graphics();
+    light2.zIndex = 10;
     const light3 = new PIXI.Graphics();
+    light3.zIndex = 10;
     playerCoordObservers.push(light, light2, light3);
 
     const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
@@ -168,19 +182,72 @@ export default function GridMapSquarePixi() {
     characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
     playerSprite = new PIXI.AnimatedSprite(characterTextures.lookingAround.south, true);
 
-    player = getPlayer(
-      pathfinder(),
-      generatedPlayerStartingPosition,
-      setIsUpdatedGameState,
-    );
-
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
-    playerSprite.x = (player?.x || -1) * cellWidth;
-    playerSprite.y = (player?.y || -1) * cellWidth;
-    playerSprite.zIndex = 10;
+    playerSprite.x = (player?.x || -1) * playerSpeed.px;
+    playerSprite.y = (player?.y || -1) * playerSpeed.px;
+    playerSprite.zIndex = 20;
 
     container.addChild(playerSprite);
+
+    const critterUIUpdater = (message: ModelUpdateMessage) => {
+      if (!message.isAlive) {
+        return;
+      }
+
+      console.log('Message:');
+      console.log(message);
+
+      // Animate player sprite
+      critterSprites.map(cs => {
+        if (cs.id === message.id) {
+          cs.sprite.x = message.x * critterSpeed.px + cellWidth / 4;
+          cs.sprite.y = message.y * critterSpeed.px + cellWidth / 4;
+        }
+      });
+    };
+
+    // Generate critters
+    // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
+    const critterBehaviour = async (critter: Player) => {
+      // TODO save these intervals and destroy them on cleanup.
+      const randomLocation = generateRandomPosition(generatedRooms);
+
+      await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
+
+      // Wait 2 seconds after reaching the destination.
+      // TODO: extract as a "delay" fn.
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await critterBehaviour(critter);
+    };
+
+    // TODO: fix the lights not following the player, then add critters back in and fix the rest of the things.
+    for (let i = 0; i < numberOfCritters; i++) {
+      const critterRandomStartingPosition = generateRandomPosition(generatedRooms);
+      const critterPathFinder = getPathfinder(generatedGrid);
+      const critter = getPlayer(
+        critterPathFinder,
+        critterRandomStartingPosition,
+        critterSSM,
+      );
+      critters.push(critter);
+
+      const critterTexture = PIXI.Texture.WHITE;
+      const critterSprite = new PIXI.Sprite(critterTexture);
+      critterSprite.tint = new PIXI.Color('rgb(255,142,155)');
+      critterSprite.width = cellWidth/2;
+      critterSprite.height = cellWidth/2;
+      critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth / 4; // TODO: use the sprite's width here?
+      critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth / 4;
+      critterSprite.zIndex = 10;
+
+      container.addChild(critterSprite);
+
+      critterSprites.push({id: critter.id, sprite: critterSprite});
+
+      critterBehaviour(critter);
+    }
+    // End "Generate critters"
 
     light.beginFill();
     light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
@@ -188,7 +255,8 @@ export default function GridMapSquarePixi() {
     light.blendMode = BLEND_MODES.ERASE;
 
     fogOfWar.addChild(light);
-    container.addChild(fogOfWar);
+    fogOfWar.zIndex = 30;
+    // container.addChild(fogOfWar);
 
     const light2Opts = {
       type: ColorGradientFilter.RADIAL,
@@ -237,6 +305,40 @@ export default function GridMapSquarePixi() {
       left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
       top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
     });
+
+    const playerUIUpdater = (message: ModelUpdateMessage) => {
+      if (!message.isAlive) {
+        return;
+      }
+
+      console.log('Message:');
+      console.log(message);
+
+      // Animate player sprite
+      const ms = message.movementState;
+      const fps = ms.action === 'running' ? (7 / 20) : (5 / 250); // has to be a multiple of the number of textures.
+      playerSprite.textures = characterTextures[ms.action][ms.direction];
+      playerSprite.animationSpeed = fps;
+      playerSprite.play();
+      playerSprite.x = player.x * playerSpeed.px;
+      playerSprite.y = player.y * playerSpeed.px;
+
+      // Animate player visibility area/lights
+      playerCoordObservers.map(co => {
+        // TODO: there is a problem with the vector not updating (particularly when changing direction??) resulting in the
+        // light drifting away from the player (I think) – replicate this with no critters present.
+        co.x += ms.vectorX * playerSpeed.px;
+        co.y += ms.vectorY * playerSpeed.px;
+      });
+
+      gridScrollableContainer()?.scroll({
+        left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
+        top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
+      });
+    };
+
+    playerSSMB.subscribe(playerUIUpdater);
+    critterSSM.subscribe(critterUIUpdater); // TODO: subscribe critter ssmb to player updates so we can hunt.
   });
 
   onCleanup(() => {
@@ -247,37 +349,56 @@ export default function GridMapSquarePixi() {
     PIXI.Cache.reset();
   });
 
-  createEffect(() => {
-    if (player) {
-      console.log(isUpdatedGameState());
-      console.log('Movement state:');
-      console.log(player.movementState);
-      console.log(`Coordinates: (${player.x}, ${player.y})`);
-      console.log(`Is changing direction: (${player.isChangingDirection})`);
-
-      // Animate player sprite
-      const ms = player.movementState;
-      const fps = ms.action === 'running' ? 7/20 : 5/250; // has to be a multiple of the number of textures.
-      playerSprite.textures = characterTextures[ms.action][ms.direction];
-      playerSprite.animationSpeed = fps;
-      playerSprite.play();
-      playerSprite.x = player.x * playerSpeed.px;
-      playerSprite.y = player.y * playerSpeed.px;
-
-      // Animate player visibility area/lights
-      playerCoordObservers.map(co => {
-        co.x += ms.vectorX * playerSpeed.px;
-        co.y += ms.vectorY * playerSpeed.px;
-      });
-    }
-
-    if (gridScrollableContainer()) {
-      gridScrollableContainer()!.scroll({
-        left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
-        top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
-      });
-    }
-  });
+  // createEffect(() => {
+  //   // TODO: FIX - the lights are drifting when the player moves.
+  //   //  Is my refresh strategy backfiring or is there some weird interference with the critters?
+  //
+  //   if (player) {
+  //     console.log(gameStateUpdated());
+  //     console.log('Movement state:');
+  //     console.log(player.movementState);
+  //     console.log(`Coordinates: (${player.x}, ${player.y})`);
+  //     console.log(`Is changing direction: (${player.isChangingDirection})`);
+  //
+  //     // Animate player sprite
+  //     const ms = player.movementState;
+  //     const fps = ms.action === 'running' ? 7 / 20 : 5 / 250; // has to be a multiple of the number of textures.
+  //     playerSprite.textures = characterTextures[ms.action][ms.direction];
+  //     playerSprite.animationSpeed = fps;
+  //     playerSprite.play();
+  //     playerSprite.x = player.x * playerSpeed.px;
+  //     playerSprite.y = player.y * playerSpeed.px;
+  //
+  //     // Animate player visibility area/lights
+  //     playerCoordObservers.map(co => {
+  //       // TODO: there is a problem with the vector not updating (particularly when changing direction??) resulting in the
+  //       // light drifting away from the player (I think) – replicate this with no critters present.
+  //       co.x += ms.vectorX * playerSpeed.px;
+  //       co.y += ms.vectorY * playerSpeed.px;
+  //     });
+  //   }
+  //
+  //   if (critterSprites.length) {
+  //     // TODO: Why do I need these console logs for stuff to work? :'(
+  //     console.log(critterUpdated0());
+  //     console.log(critterUpdated1());
+  //     critterSprites.map(cs => {
+  //       const critter = critters.find(c=>c.id === cs.id);
+  //       if (!critter) {
+  //         return;
+  //       }
+  //       cs.sprite.x = critter.x * critterSpeed.px + cellWidth / 4;
+  //       cs.sprite.y = critter.y * critterSpeed.px + cellWidth / 4;
+  //     });
+  //   }
+  //
+  //   if (gridScrollableContainer()) { // TODO: if I comment this *line* out, the game breaks. Wtf?
+  //   // gridScrollableContainer()!.scroll({
+  //   //   left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
+  //   //   top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
+  //   // });
+  //   }
+  // });
 
   const movePlayerTo = async (cell: GridCell) => {
     if (!player) {
