@@ -11,16 +11,16 @@ import {
   Sprite, Text,
   Texture,
 } from 'pixi.js';
-import { createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
-import { DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
+import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
-import getSSMB, {ModelUpdateMessage} from '../utils/SimpleSequenceMessageBroker';
+import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 
 // interface GridMapSquareProps {
 //   // TODO: add props
@@ -51,15 +51,18 @@ export interface CharacterTextureMap {
 
 export default function GridMapSquarePixi() {
   // These settings are not user-configurable
-  const cellWidth = 50;
+  const cellWidth = 45;
   const mapWidth = 50;
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
+  const crittersEaten: Player['id'][] = [];
+  const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
+  let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
   // End "These settings are not user-configurable"
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
-  const critterSpeed: Speed = {ms: 1000, px: cellWidth};
+  const critterSpeed: Speed = {ms: 300, px: cellWidth};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -195,72 +198,124 @@ export default function GridMapSquarePixi() {
 
     container.addChild(playerSprite);
 
-    const critterUIUpdater = (message: ModelUpdateMessage) => {
-      if (!message.isAlive) {
+    const critterUIUpdater = (critterInstance: Player, ssmb: SimpleSequenceMessageBroker) => {
+      const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
+
+      if (!critterSprite) {
         return;
       }
 
-      console.debug('Critter message:');
-      console.debug(message);
+      if (!critterInstance.isAlive) {
+        // critterSprite.sprite.tint = 'grey';
+        critterSprite.sprite.alpha = 0; // TODO: change to "dead" texture?
+        ssmb.removeSubscriber(critterInstance.id);
+        return;
+      }
 
-      // Animate player sprite
-      critterSprites.map(cs => {
-        if (cs.id === message.id) {
-          cs.sprite.x = message.x * critterSpeed.px + cellWidth / 4;
-          cs.sprite.y = message.y * critterSpeed.px + cellWidth / 4;
+      // Animate critter sprite
+      critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth / 4;
+      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth / 4;
 
 
-          // TODO: extract this whole method
-          const distanceToPlayer = calcDiagonalDistance(
-            {x: cs.sprite.x, y: cs.sprite.y},
-            {x: playerSprite.x, y: playerSprite.y},
-          );
+      // TODO: extract this whole method
+      // Update critter visibility
+      const distanceToPlayer = calcDiagonalDistance(
+        {x: critterSprite.sprite.x, y: critterSprite.sprite.y},
+        {x: playerSprite.x, y: playerSprite.y},
+      );
 
-          const spotLightRadius = (cellWidth * 7.5); // TODO: extract this as a variable to use everywhere.
-          if (distanceToPlayer < spotLightRadius * 0.75) {
-            cs.sprite.alpha = 1;
-          } else if (distanceToPlayer < spotLightRadius) {
-            cs.sprite.alpha = 0.5;
-          } else {
-            cs.sprite.alpha = 0;
-          }
+      if (distanceToPlayer >= spotLightRadius) {
+        critterSprite.sprite.alpha = 0;
+        // critterSprite.sprite.tint = 'red';
+      }
+      if (distanceToPlayer < spotLightRadius) {
+        critterSprite.sprite.alpha = 0.35;
+        // critterSprite.sprite.tint = 'lime';
+      }
+      if (distanceToPlayer < spotLightRadius * 0.7) {
+        critterSprite.sprite.alpha = 1;
+        // critterSprite.sprite.tint = 'yellow';
+      }
+      if (distanceToPlayer < spotLightRadius * 0.1) {
+        // critterSprite.sprite.tint = 'blue';
+        critterInstance.setIsAlive(false);
+        if (!crittersEaten.includes(critterInstance.id)) {
+          crittersEaten.push(critterInstance.id);
+          setNumberOfCrittersEaten(n => n + 1);
+          playerSpeed.ms = playerSpeed.ms * 0.75;
+          light.scale.set(light.scale.x * 1.25, light.scale.y * 1.25);
+          light2.scale.set(light2.scale.x * 1.25, light2.scale.y * 1.25);
+          light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
+
+          spotLightRadius = spotLightRadius * 1.1;
         }
-      });
+      }
     };
 
-    const playerUIUpdaterForCritters = (message: ModelUpdateMessage) => {
-      if (!message.isAlive) {
+    const playerUIUpdaterForCritters = (playerInstance: Player, _ssmb: SimpleSequenceMessageBroker) => {
+      if (!playerInstance.isAlive) {
         return;
       }
 
-      console.debug('Critter message:');
-      console.debug(message);
+      for (let i = 0; i < critters.length; i++) {
+        const critterInstance = critters[i];
 
-      // Animate player sprite
-      critterSprites.map(cs => {
-        if (cs.id === message.id) {
-          // TODO: extract this whole method
-          const distanceToPlayer = calcDiagonalDistance(
-            {x: cs.sprite.x, y: cs.sprite.y},
-            {x: playerSprite.x, y: playerSprite.y},
-          );
+        if (!critterInstance || !critterInstance.isAlive) {
+          continue;
+        }
 
-          const spotLightRadius = (cellWidth * 7.5); // TODO: extract this as a variable to use everywhere.
-          if (distanceToPlayer < spotLightRadius * 0.75) {
-            cs.sprite.alpha = 1;
-          } else if (distanceToPlayer < spotLightRadius) {
-            cs.sprite.alpha = 0.5;
-          } else {
-            cs.sprite.alpha = 0;
+        const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
+
+        if (!critterSprite) {
+          return;
+        }
+
+        // TODO: extract this whole method
+        // Make  critter sprite visible
+        const distanceToPlayer = calcDiagonalDistance(
+          {x: critterSprite.sprite.x, y: critterSprite.sprite.y},
+          {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
+        );
+
+        if (distanceToPlayer >= spotLightRadius) {
+          critterSprite.sprite.alpha = 0;
+          // critterSprite.sprite.tint = 'red';
+        }
+        if (distanceToPlayer < spotLightRadius) {
+          critterSprite.sprite.alpha = 0.35;
+          // critterSprite.sprite.tint = 'lime';
+        }
+        if (distanceToPlayer < spotLightRadius * 0.7) {
+          critterSprite.sprite.alpha = 1;
+          // critterSprite.sprite.tint = 'yellow';
+        }
+        if (distanceToPlayer < spotLightRadius * 0.1) {
+          // critterSprite.sprite.tint = 'blue';
+          critterInstance.setIsAlive(false);
+          if (!crittersEaten.includes(critterInstance.id)) {
+            crittersEaten.push(critterInstance.id);
+            // Could also be "setNumberOfCrittersEaten(n => ++n);"
+            // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
+            // setNumberOfCrittersEaten(n => n++); - b/c n++ returns before it adds? Spent 30 min debugging that 💩.
+            setNumberOfCrittersEaten(n => n + 1);
+            playerSpeed.ms = playerSpeed.ms * 0.75;
+            light.scale.set(light.scale.x * 1.25, light.scale.y * 1.25);
+            light2.scale.set(light2.scale.x * 1.25, light2.scale.y * 1.25);
+            light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
+
+            spotLightRadius = spotLightRadius * 1.25;
           }
         }
-      });
+      }
     };
 
     // Generate critters
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
     const critterBehaviour = async (critter: Player) => {
-      // TODO save these intervals and destroy them on cleanup.
+      if (!critter.isAlive) {
+        return;
+      }
+
       const randomLocation = generateRandomPosition(generatedRooms);
 
       await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
@@ -271,7 +326,6 @@ export default function GridMapSquarePixi() {
       await critterBehaviour(critter);
     };
 
-    // TODO: fix the lights not following the player, then add critters back in and fix the rest of the things.
     for (let i = 0; i < numberOfCritters; i++) {
       const critterRandomStartingPosition = generateRandomPosition(generatedRooms);
       const critterPathFinder = getPathfinder(generatedGrid);
@@ -286,8 +340,8 @@ export default function GridMapSquarePixi() {
       const critterTexture = Texture.WHITE;
       const critterSprite = new Sprite(critterTexture);
       critterSprite.tint = new Color('rgb(255,142,155)');
-      critterSprite.width = cellWidth/2;
-      critterSprite.height = cellWidth/2;
+      critterSprite.width = cellWidth / 2;
+      critterSprite.height = cellWidth / 2;
       critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth / 4; // TODO: use the sprite's width here?
       critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth / 4;
       critterSprite.alpha = 0;
@@ -302,13 +356,18 @@ export default function GridMapSquarePixi() {
 
       critterSprites.push({id: critter.id, sprite: critterSprite});
 
+      critterSSMB
+        .addSubscriber({subscriptionId: critter.id, callback: critterUIUpdater});
+
       critterBehaviour(critter);
     }
     // End "Generate critters"
 
     light.beginFill();
-    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
+    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
     light.endFill();
+    light.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
+    light.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     light.blendMode = BLEND_MODES.ERASE;
 
     fogOfWar.addChild(light);
@@ -324,8 +383,10 @@ export default function GridMapSquarePixi() {
     };
 
     light2.beginFill();
-    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
+    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
     light2.endFill();
+    light2.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
+    light2.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     const gradientLight2 = new ColorGradientFilter(light2Opts);
     gradientLight2.blendMode = BLEND_MODES.SCREEN;
     gradientLight2.multisample = MSAA_QUALITY.HIGH;
@@ -345,8 +406,10 @@ export default function GridMapSquarePixi() {
     };
 
     light3.beginFill();
-    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, cellWidth * 7.5);
+    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
     light3.endFill();
+    light3.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
+    light3.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     const gradientLight3 = new ColorGradientFilter(light3Opts);
     gradientLight3.blendMode = BLEND_MODES.MULTIPLY;
     gradientLight3.multisample = MSAA_QUALITY.HIGH;
@@ -364,16 +427,16 @@ export default function GridMapSquarePixi() {
       top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
     });
 
-    const playerUIUpdater = (message: ModelUpdateMessage) => {
-      if (!message.isAlive) {
+    const playerUIUpdater = (playerInstance: Player, _ssmb: SimpleSequenceMessageBroker) => {
+      if (!playerInstance.isAlive) {
         return;
       }
 
       console.debug('Player message:');
-      console.debug(message);
+      console.debug(playerInstance);
 
       // Animate player sprite
-      const ms = message.movementState;
+      const ms = playerInstance.movementState;
       const fps = ms.action === 'running' ? (7 / 20) : (5 / 250); // has to be a multiple of the number of textures.
       playerSprite.textures = characterTextures[ms.action][ms.direction];
       playerSprite.animationSpeed = fps;
@@ -395,11 +458,9 @@ export default function GridMapSquarePixi() {
       });
     };
 
-    playerSSMB.addSubscriber(playerUIUpdater);
-    playerSSMB.addSubscriber(playerUIUpdaterForCritters);
-    critterSSMB.addSubscriber(critterUIUpdater);
-    // TODO: subscribe critter ssmb to player updates so we can hunt. See if I can override the behaviour so they run away
-    //  from the character when it's close.
+    playerSSMB
+      .addSubscriber({subscriptionId: player.id, callback: playerUIUpdater})
+      .addSubscriber({subscriptionId: player.id, callback: playerUIUpdaterForCritters});
   });
 
   onCleanup(() => {
@@ -423,6 +484,10 @@ export default function GridMapSquarePixi() {
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
 
+  createEffect(() => {
+    // console.log(numberOfCrittersEaten());
+  });
+
   // TODO:
   //  1. Use Tailwind classes everywhere.
   //  2. Implement tests.
@@ -437,16 +502,25 @@ export default function GridMapSquarePixi() {
       <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view}
         fallback={<h2>Generating cells…</h2>}>
-        <div id="grid-scrollable-container"
-          class={'overflow-auto inline-block mt-12 ' +
-               'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-6xl ' +
-               'max-h-[500px] md:max-h-[800px]'}>
-          <div style={{
-            width: `${gridCells().length * (cellWidth)}px`,
-            height: `${gridCells().length * (cellWidth)}px`,
-            'background-color': '#000',
-          }}>
-            {pixiApp().view as unknown as Element}
+        <div class={'relative inline-block'}>
+          <div id='score-container'
+            class={'absolute top-12 left-0 '}>
+            <h2 class={'text-3xl font-bold leading-loose ' +
+              'text-white pl-6 pt-1'}>
+              Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
+            </h2>
+          </div>
+          <div id='grid-scrollable-container'
+            class={'overflow-auto inline-block mt-12 ' +
+                 'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-5xl ' +
+                 'max-h-[400px] md:max-h-[700px]'}>
+            <div style={{
+              width: `${gridCells().length * (cellWidth)}px`,
+              height: `${gridCells().length * (cellWidth)}px`,
+              'background-color': '#000',
+            }}>
+              {pixiApp().view as unknown as Element}
+            </div>
           </div>
         </div>
       </Show>

@@ -39,7 +39,8 @@ export interface Player {
     vectorX: number;
     vectorY: number;
   },
-  isAlive: boolean
+  isAlive: boolean;
+  setIsAlive: (isAlive: boolean) => void;
 }
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
@@ -49,13 +50,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
   const id = crypto.randomUUID();
 
   const updateGameState = () => {
-    ssmb.publish({
-      id: _this.id,
-      movementState: _this.movementState,
-      x: _this.x,
-      y: _this.y,
-      isAlive: _this.isAlive,
-    });
+    ssmb.publish(_this);
   };
 
   const movementState: Player['movementState'] = {
@@ -63,6 +58,15 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     direction: MovementDirection.S,
     vectorX: 0,
     vectorY: 0,
+  };
+
+  const isAt = (cell: GridCell): boolean => {
+    return _this.x === cell.x && _this.y === cell.y;
+  };
+
+  const setIsAlive = (isAlive: boolean) => {
+    _this.isAlive = isAlive;
+    updateGameState();
   };
 
   const moveToCoords = (x: number, y:number) => {
@@ -89,10 +93,6 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     _this.y = y;
 
     updateGameState();
-  };
-
-  const isAt = (cell: GridCell): boolean => {
-    return _this.x === cell.x && _this.y === cell.y;
   };
 
   const stopMoving = () => {
@@ -157,6 +157,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     isChangingDirection: false,
     movementState,
     isAlive: true,
+    setIsAlive,
   };
 
   updateGameState();
