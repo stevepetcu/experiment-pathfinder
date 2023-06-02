@@ -1,6 +1,7 @@
 // Based on https://github.com/bgrins/javascript-astar/blob/master/astar.js
 
 import binaryHeap, {BinaryHeap} from '../utils/BinaryHeap';
+import {calcDiagonalDistance, calcManhattanDistance} from '../utils/DistanceCalculator';
 import {Coords} from './Coords';
 import { Grid, GridCell} from './SquareGrid';
 
@@ -118,16 +119,7 @@ export const getPathfinder = (
   options = {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true},
 ): Pathfinder => {
 
-  const calcManhattanDistance = (from: PathfinderCell, to: PathfinderCell) => {
-    return Math.abs(from.gridCell.x - to.gridCell.x) + Math.abs(from.gridCell.y - to.gridCell.y);
-  };
 
-  const calcDiagonalDistance = (from: PathfinderCell, to: PathfinderCell) => {
-    const deltaX = Math.abs(from.gridCell.x - to.gridCell.x);
-    const deltaY = Math.abs(from.gridCell.y - to.gridCell.y);
-
-    return Math.min(deltaX, deltaY) * Math.sqrt(2) + Math.abs(deltaX - deltaY);
-  };
   const scoreFn = (element: PathfinderCell) => element.f;
 
   const cells = grid.cells.map(row => row.map(cell => {
@@ -187,7 +179,7 @@ export const getPathfinder = (
 
     let closestCell = start; // Used when options.returnClosestCellOnPathFailure === true.
 
-    start.h = heuristic(start, end);
+    start.h = heuristic(start.gridCell, end.gridCell);
     addDirtyCell(start);
     _this.heap.push(start);
 
@@ -223,7 +215,7 @@ export const getPathfinder = (
           // Found an optimal (so far) path to this node. Take score for node to see how good it is.
           neighbour.cell.visited = true;
           neighbour.cell.parent = currentElement;
-          neighbour.cell.h = neighbour.cell.h || heuristic(neighbour.cell, end);
+          neighbour.cell.h = neighbour.cell.h || heuristic(neighbour.cell.gridCell, end.gridCell);
           neighbour.cell.g = gScore;
           neighbour.cell.f = neighbour.cell.g + neighbour.cell.h;
           addDirtyCell(neighbour.cell);

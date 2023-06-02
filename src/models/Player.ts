@@ -49,9 +49,6 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
   const id = crypto.randomUUID();
 
   const updateGameState = () => {
-
-    console.log('aici');
-    console.log(_this);
     ssmb.publish({
       id: _this.id,
       movementState: _this.movementState,

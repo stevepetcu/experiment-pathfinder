@@ -10,7 +10,7 @@ export interface ModelUpdateMessage {
 
 export interface SimpleSequenceMessageBroker {
   publish: (message: ModelUpdateMessage) => void;
-  subscribe: (callback: (message: ModelUpdateMessage) => void) => void;
+  addSubscriber: (callback: (message: ModelUpdateMessage) => void) => void;
 }
 
 // We'll not even implement a way to choose your subscriptions b/c
@@ -19,7 +19,7 @@ export interface SimpleSequenceMessageBroker {
 export default function getSSMB(): SimpleSequenceMessageBroker {
   const subscriptions: ((message: ModelUpdateMessage) => void)[] = [];
 
-  const subscribe = (callback: (message: ModelUpdateMessage) => void) => {
+  const addSubscriber = (callback: (message: ModelUpdateMessage) => void) => {
     subscriptions.push(callback);
   };
 
@@ -27,5 +27,5 @@ export default function getSSMB(): SimpleSequenceMessageBroker {
     subscriptions.forEach(sub => sub(message));
   };
 
-  return {publish, subscribe};
+  return {publish, addSubscriber};
 }

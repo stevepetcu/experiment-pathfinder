@@ -1,7 +1,16 @@
 import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import {UUID} from 'crypto';
-import * as PIXI from 'pixi.js';
-import {AnimatedSprite, BLEND_MODES, Graphics, MSAA_QUALITY, Sprite, Texture} from 'pixi.js';
+import {
+  AlphaFilter,
+  AnimatedSprite, Application,
+  Assets,
+  BLEND_MODES,
+  Color, Container,
+  Graphics,
+  MSAA_QUALITY,
+  Sprite, Text,
+  Texture,
+} from 'pixi.js';
 import { createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
@@ -9,6 +18,7 @@ import {generateCorridors, generateRandomPosition, generateRooms} from '../model
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import { DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
+import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {ModelUpdateMessage} from '../utils/SimpleSequenceMessageBroker';
 
@@ -79,10 +89,10 @@ export default function GridMapSquarePixi() {
   const critterSprites: { id: UUID, sprite: Sprite }[] = [];
 
   const playerSSMB = getSSMB();
-  const critterSSM = getSSMB();
+  const critterSSMB = getSSMB();
 
-  const [pixiApp] = createSignal<PIXI.Application>(
-    new PIXI.Application({
+  const [pixiApp] = createSignal<Application>(
+    new Application({
       background: 'darkGrey',
       width: mapWidth * cellWidth,
       height: mapWidth * cellWidth,
@@ -121,23 +131,22 @@ export default function GridMapSquarePixi() {
 
     setGridCells(generatedGrid.cells);
 
-    const container = new PIXI.Container();
+    const container = new Container();
 
     // Add textures:
     // TODO: sort out the caching issue;
     //  not sure if it's to do w/ files having the same names + it doesn't account for their path, or what.
-    await PIXI.Assets.init({manifest: 'assets/sprite-textures-manifest.json'});
-    const tileTextures = await PIXI.Assets.loadBundle('tiles');
+    await Assets.init({manifest: 'assets/sprite-textures-manifest.json'});
+    const tileTextures = await Assets.loadBundle('tiles');
 
     gridCells().map(row => {
       row.map(cell => {
-        const sprite = new PIXI.Sprite();
+        const sprite = new Sprite();
         sprite.width = cellWidth;
         // noinspection JSSuspiciousNameCombination
         sprite.height = cellWidth;
         sprite.x = cell.x * cellWidth;
         sprite.y = cell.y * cellWidth;
-        sprite.zIndex = 1;
 
         // Opt-in to interactivity
         sprite.eventMode = 'dynamic';
@@ -162,31 +171,27 @@ export default function GridMapSquarePixi() {
       });
     });
 
-    const fogOfWar = new PIXI.Graphics();
-    fogOfWar.beginFill(0x000000);
+    const fogOfWar = new Graphics();
+    fogOfWar.beginFill('rgb(2, 6, 23)');
     fogOfWar.drawRect(0, 0, pixiApp().view.width, pixiApp().view.height);
     fogOfWar.endFill();
-    const filter = new PIXI.AlphaFilter(0.95);
+    const filter = new AlphaFilter(0.75);
     fogOfWar.filters = [filter];
 
-    const light = new PIXI.Graphics();
-    light.zIndex = 10;
-    const light2 = new PIXI.Graphics();
-    light2.zIndex = 10;
-    const light3 = new PIXI.Graphics();
-    light3.zIndex = 10;
+    const light = new Graphics();
+    const light2 = new Graphics();
+    const light3 = new Graphics();
     playerCoordObservers.push(light, light2, light3);
 
-    const charLookingAroundTextures = await PIXI.Assets.loadBundle('character-looking-around');
-    const charRunningTextures = await PIXI.Assets.loadBundle('character-running');
+    const charLookingAroundTextures = await Assets.loadBundle('character-looking-around');
+    const charRunningTextures = await Assets.loadBundle('character-running');
     characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
-    playerSprite = new PIXI.AnimatedSprite(characterTextures.lookingAround.south, true);
+    playerSprite = new AnimatedSprite(characterTextures.lookingAround.south, true);
 
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
     playerSprite.x = (player?.x || -1) * playerSpeed.px;
     playerSprite.y = (player?.y || -1) * playerSpeed.px;
-    playerSprite.zIndex = 20;
 
     container.addChild(playerSprite);
 
@@ -195,14 +200,59 @@ export default function GridMapSquarePixi() {
         return;
       }
 
-      console.log('Message:');
-      console.log(message);
+      console.debug('Critter message:');
+      console.debug(message);
 
       // Animate player sprite
       critterSprites.map(cs => {
         if (cs.id === message.id) {
           cs.sprite.x = message.x * critterSpeed.px + cellWidth / 4;
           cs.sprite.y = message.y * critterSpeed.px + cellWidth / 4;
+
+
+          // TODO: extract this whole method
+          const distanceToPlayer = calcDiagonalDistance(
+            {x: cs.sprite.x, y: cs.sprite.y},
+            {x: playerSprite.x, y: playerSprite.y},
+          );
+
+          const spotLightRadius = (cellWidth * 7.5); // TODO: extract this as a variable to use everywhere.
+          if (distanceToPlayer < spotLightRadius * 0.75) {
+            cs.sprite.alpha = 1;
+          } else if (distanceToPlayer < spotLightRadius) {
+            cs.sprite.alpha = 0.5;
+          } else {
+            cs.sprite.alpha = 0;
+          }
+        }
+      });
+    };
+
+    const playerUIUpdaterForCritters = (message: ModelUpdateMessage) => {
+      if (!message.isAlive) {
+        return;
+      }
+
+      console.debug('Critter message:');
+      console.debug(message);
+
+      // Animate player sprite
+      critterSprites.map(cs => {
+        if (cs.id === message.id) {
+          // TODO: extract this whole method
+          const distanceToPlayer = calcDiagonalDistance(
+            {x: cs.sprite.x, y: cs.sprite.y},
+            {x: playerSprite.x, y: playerSprite.y},
+          );
+
+          const spotLightRadius = (cellWidth * 7.5); // TODO: extract this as a variable to use everywhere.
+          if (distanceToPlayer < spotLightRadius * 0.75) {
+            cs.sprite.alpha = 1;
+          } else if (distanceToPlayer < spotLightRadius) {
+            cs.sprite.alpha = 0.5;
+          } else {
+            cs.sprite.alpha = 0;
+          }
         }
       });
     };
@@ -228,18 +278,25 @@ export default function GridMapSquarePixi() {
       const critter = getPlayer(
         critterPathFinder,
         critterRandomStartingPosition,
-        critterSSM,
+        critterSSMB,
       );
+
       critters.push(critter);
 
-      const critterTexture = PIXI.Texture.WHITE;
-      const critterSprite = new PIXI.Sprite(critterTexture);
-      critterSprite.tint = new PIXI.Color('rgb(255,142,155)');
+      const critterTexture = Texture.WHITE;
+      const critterSprite = new Sprite(critterTexture);
+      critterSprite.tint = new Color('rgb(255,142,155)');
       critterSprite.width = cellWidth/2;
       critterSprite.height = cellWidth/2;
       critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth / 4; // TODO: use the sprite's width here?
       critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth / 4;
-      critterSprite.zIndex = 10;
+      critterSprite.alpha = 0;
+
+      const text = new Text(i, {fontSize: 10, align: 'center'});
+      text.x = critterSprite.width / 5;
+      text.y = critterSprite.width / 8;
+
+      critterSprite.addChild(text);
 
       container.addChild(critterSprite);
 
@@ -255,14 +312,13 @@ export default function GridMapSquarePixi() {
     light.blendMode = BLEND_MODES.ERASE;
 
     fogOfWar.addChild(light);
-    fogOfWar.zIndex = 30;
-    // container.addChild(fogOfWar);
+    container.addChild(fogOfWar);
 
     const light2Opts = {
       type: ColorGradientFilter.RADIAL,
       stops: [
-        {offset: 0, color: 'rgb(33,211,18)', alpha: 0.35},
-        {offset: 0.2, color: 'rgb(0, 0, 0)', alpha: 1},
+        {offset: 0, color: 'rgb(227,165,8)', alpha: 0.25},
+        {offset: 0.125, color: 'rgb(0, 0, 0)', alpha: 1},
       ],
       alpha: 1,
     };
@@ -281,7 +337,9 @@ export default function GridMapSquarePixi() {
       type: ColorGradientFilter.RADIAL,
       stops: [
         {offset: 0, color: 'rgb(256, 256, 256)', alpha: 1},
-        {offset: 1, color: 'rgb(18,10,4)', alpha: 1},
+        {offset: 0.65, color: 'rgb(244,221,203)', alpha: 1},
+        {offset: 0.95, color: 'rgb(95, 80, 68)', alpha: 1},
+        {offset: 1, color: 'rgb(63,77,135)', alpha: 1},
       ],
       alpha: 1,
     };
@@ -311,8 +369,8 @@ export default function GridMapSquarePixi() {
         return;
       }
 
-      console.log('Message:');
-      console.log(message);
+      console.debug('Player message:');
+      console.debug(message);
 
       // Animate player sprite
       const ms = message.movementState;
@@ -337,68 +395,18 @@ export default function GridMapSquarePixi() {
       });
     };
 
-    playerSSMB.subscribe(playerUIUpdater);
-    critterSSM.subscribe(critterUIUpdater); // TODO: subscribe critter ssmb to player updates so we can hunt.
+    playerSSMB.addSubscriber(playerUIUpdater);
+    playerSSMB.addSubscriber(playerUIUpdaterForCritters);
+    critterSSMB.addSubscriber(critterUIUpdater);
+    // TODO: subscribe critter ssmb to player updates so we can hunt. See if I can override the behaviour so they run away
+    //  from the character when it's close.
   });
 
   onCleanup(() => {
     console.debug('Destroying app…');
     pixiApp().stage.destroy({children: true, texture: true, baseTexture: true}); // Should not be needed but…
     pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
-    PIXI.Assets.cache.reset();
-    PIXI.Cache.reset();
   });
-
-  // createEffect(() => {
-  //   // TODO: FIX - the lights are drifting when the player moves.
-  //   //  Is my refresh strategy backfiring or is there some weird interference with the critters?
-  //
-  //   if (player) {
-  //     console.log(gameStateUpdated());
-  //     console.log('Movement state:');
-  //     console.log(player.movementState);
-  //     console.log(`Coordinates: (${player.x}, ${player.y})`);
-  //     console.log(`Is changing direction: (${player.isChangingDirection})`);
-  //
-  //     // Animate player sprite
-  //     const ms = player.movementState;
-  //     const fps = ms.action === 'running' ? 7 / 20 : 5 / 250; // has to be a multiple of the number of textures.
-  //     playerSprite.textures = characterTextures[ms.action][ms.direction];
-  //     playerSprite.animationSpeed = fps;
-  //     playerSprite.play();
-  //     playerSprite.x = player.x * playerSpeed.px;
-  //     playerSprite.y = player.y * playerSpeed.px;
-  //
-  //     // Animate player visibility area/lights
-  //     playerCoordObservers.map(co => {
-  //       // TODO: there is a problem with the vector not updating (particularly when changing direction??) resulting in the
-  //       // light drifting away from the player (I think) – replicate this with no critters present.
-  //       co.x += ms.vectorX * playerSpeed.px;
-  //       co.y += ms.vectorY * playerSpeed.px;
-  //     });
-  //   }
-  //
-  //   if (critterSprites.length) {
-  //     // TODO: Why do I need these console logs for stuff to work? :'(
-  //     console.log(critterUpdated0());
-  //     console.log(critterUpdated1());
-  //     critterSprites.map(cs => {
-  //       const critter = critters.find(c=>c.id === cs.id);
-  //       if (!critter) {
-  //         return;
-  //       }
-  //       cs.sprite.x = critter.x * critterSpeed.px + cellWidth / 4;
-  //       cs.sprite.y = critter.y * critterSpeed.px + cellWidth / 4;
-  //     });
-  //   }
-  //
-  //   if (gridScrollableContainer()) { // TODO: if I comment this *line* out, the game breaks. Wtf?
-  //   // gridScrollableContainer()!.scroll({
-  //   //   left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
-  //   //   top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
-  //   // });
-  //   }
-  // });
 
   const movePlayerTo = async (cell: GridCell) => {
     if (!player) {

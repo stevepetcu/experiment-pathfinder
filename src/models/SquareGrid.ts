@@ -17,8 +17,6 @@ export interface GridCell {
   status: CellStatus;
   roomId?: RoomDto['id'];
   isAccessible: () => boolean;
-  distanceToCell: (otherCell: GridCell) => number;
-  distanceToCoords: (coords: Coords) => number;
 }
 
 export interface Grid {
@@ -35,23 +33,7 @@ const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id'
     && _this.status !== CellStatus.OUT_OF_BOUNDS;
   };
 
-  const distanceToCell = (otherCell: GridCell) => {
-    // TODO: replace this fn in the pathfinder.
-    return Math.max(
-      Math.abs(_this.x - otherCell.x),
-      Math.abs(_this.y - otherCell.y),
-    );
-  };
-
-  const distanceToCoords = (coords: Coords) => {
-    // TODO: merge this fn with "distanceToCell".
-    return Math.max(
-      Math.abs(_this.x - coords.x),
-      Math.abs(_this.y - coords.y),
-    );
-  };
-
-  const _this = {x, y, status, roomId, isAccessible, distanceToCell, distanceToCoords};
+  const _this = {x, y, status, roomId, isAccessible};
 
   return _this;
 };
