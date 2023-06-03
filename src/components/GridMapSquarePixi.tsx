@@ -106,9 +106,26 @@ export default function GridMapSquarePixi() {
   const critterSSMB = getSSMB();
 
   const [finishedLoading, setFinishedLoading] = createSignal(false);
+  const [loadingProgress, setLoadingProgress] = createSignal(0);
   const [startedGame, setStartedGame] = createSignal(false);
 
   onMount(async () => {
+    const smokeAndMirrorsLoading = async () => {
+      const randomWaitTime = randomInt(50, 331);
+      const randomProgress = randomInt(1, 4);
+      await new Promise(resolve => setTimeout(resolve, randomWaitTime));
+      if (!finishedLoading() && loadingProgress() < 96) {
+        setLoadingProgress(lp => lp + randomProgress);
+        smokeAndMirrorsLoading();
+      }
+      if (finishedLoading()) {
+        setLoadingProgress(100);
+        return;
+      }
+    };
+
+    smokeAndMirrorsLoading();
+
     // Create the actual grid:
     const generatedGrid = await getSquareGrid(mapWidth);
 
@@ -572,10 +589,20 @@ export default function GridMapSquarePixi() {
                 'cursor-pointer': finishedLoading(),
               }}
             >
-              <p class={'text-2xl sm:text-3xl md:text-5xl font-bold leading-none text-white antialiased'}>
-                {!finishedLoading() && 'Loading…'}
-                {finishedLoading() && 'Click anywhere to start'}
-              </p>
+              {
+                !finishedLoading() &&
+                <>
+                  <p class={'text-2xl sm:text-3xl md:text-5xl font-bold ' +
+                  'leading-none text-white antialiased'}>Loading…</p>
+                  <p class={'text-xl sm:text-2xl md:text-4xl ' +
+                'leading-none text-white antialiased'}>{loadingProgress()}%</p>
+                </>
+              }
+              {
+                finishedLoading() &&
+                <p class={'text-2xl sm:text-3xl md:text-5xl font-bold ' +
+                  'leading-none text-white antialiased'}>Click anywhere to start</p>
+              }
             </div>
           }
           {
