@@ -4,7 +4,12 @@ module.exports = {
     './src/**/*.tsx',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'nunito': ['nunito', 'serif'],
+        'amatic': ['Amatic SC', 'serif'],
+      },
+    },
   },
   plugins: [],
 };

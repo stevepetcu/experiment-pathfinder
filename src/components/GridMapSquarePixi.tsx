@@ -11,7 +11,7 @@ import {
   Sprite, Text,
   Texture,
 } from 'pixi.js';
-import {createEffect, createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
@@ -21,6 +21,7 @@ import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/Squar
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
+import {formatSeconds} from '../utils/Time';
 
 // interface GridMapSquareProps {
 //   // TODO: add props
@@ -56,13 +57,12 @@ export default function GridMapSquarePixi() {
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
-  const crittersEaten: Player['id'][] = [];
-  const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
   let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
+  const baseRunningFps = 5/250;
   // End "These settings are not user-configurable"
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
-  const critterSpeed: Speed = {ms: 300, px: cellWidth};
+  const critterSpeed: Speed = {ms: 500, px: cellWidth};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -75,12 +75,18 @@ export default function GridMapSquarePixi() {
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
-
   const emptyGrid = getEmptyGrid();
   const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder(emptyGrid));
 
-
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
+
+  const [pixiApp] = createSignal<Application>(
+    new Application({
+      background: 'darkGrey',
+      width: mapWidth * cellWidth,
+      height: mapWidth * cellWidth,
+    }),
+  );
   // TODO: end "do I need signals here?"
 
   let player: Player;
@@ -90,17 +96,17 @@ export default function GridMapSquarePixi() {
 
   const critters: Player[] = [];
   const critterSprites: { id: UUID, sprite: Sprite }[] = [];
+  const crittersEaten: Player['id'][] = [];
+  const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
+
+  let playTimeTracker: NodeJS.Timer;
+  const [playTime, setPlayTime] = createSignal(0);
 
   const playerSSMB = getSSMB();
   const critterSSMB = getSSMB();
 
-  const [pixiApp] = createSignal<Application>(
-    new Application({
-      background: 'darkGrey',
-      width: mapWidth * cellWidth,
-      height: mapWidth * cellWidth,
-    }),
-  );
+  const [finishedLoading, setFinishedLoading] = createSignal(false);
+  const [startedGame, setStartedGame] = createSignal(false);
 
   onMount(async () => {
     // Create the actual grid:
@@ -155,6 +161,12 @@ export default function GridMapSquarePixi() {
         sprite.eventMode = 'dynamic';
         // Shows hand cursor
         sprite.cursor = 'pointer';
+
+        // sprite.on('pointerover', () => {
+        //   console.log('hovered');
+        //   // TODO: do something to highlight + add some pointer clicked sprite etc.
+        // });
+
         sprite.on('pointerdown', () => {
           movePlayerTo(cell);
         });
@@ -190,7 +202,8 @@ export default function GridMapSquarePixi() {
     const charRunningTextures = await Assets.loadBundle('character-running');
     characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
     playerSprite = new AnimatedSprite(characterTextures.lookingAround.south, true);
-
+    playerSprite.animationSpeed = baseRunningFps; // TODO: extract this as a constant.
+    playerSprite.play();
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
     playerSprite.x = (player?.x || -1) * playerSpeed.px;
@@ -199,6 +212,10 @@ export default function GridMapSquarePixi() {
     container.addChild(playerSprite);
 
     const critterUIUpdater = (critterInstance: Player, ssmb: SimpleSequenceMessageBroker) => {
+      if (!playerSprite) {
+        return;
+      }
+
       const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
 
       if (!critterSprite) {
@@ -312,7 +329,7 @@ export default function GridMapSquarePixi() {
     // Generate critters
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
     const critterBehaviour = async (critter: Player) => {
-      if (!critter.isAlive) {
+      if (!startedGame() || !critter.isAlive) {
         return;
       }
 
@@ -420,15 +437,9 @@ export default function GridMapSquarePixi() {
     pixiApp().stage.addChild(container);
 
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
-    // Always keep the character in the center of the scrollable div when it's moving
-    // (but allow scrolling inside the div when the character is not moving)
-    gridScrollableContainer()?.scroll({
-      left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
-      top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
-    });
 
     const playerUIUpdater = (playerInstance: Player, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!playerInstance.isAlive) {
+      if (!playerSprite || !playerInstance.isAlive) {
         return;
       }
 
@@ -437,7 +448,8 @@ export default function GridMapSquarePixi() {
 
       // Animate player sprite
       const ms = playerInstance.movementState;
-      const fps = ms.action === 'running' ? (7 / 20) : (5 / 250); // has to be a multiple of the number of textures.
+      const runningFpsDivider = numberOfCrittersEaten() === 0 ? 1 : 5 * numberOfCrittersEaten();
+      const fps = ms.action === 'running' ? 7/20 : baseRunningFps/runningFpsDivider; // has to be a multiple of the number of textures.
       playerSprite.textures = characterTextures[ms.action][ms.direction];
       playerSprite.animationSpeed = fps;
       playerSprite.play();
@@ -445,7 +457,7 @@ export default function GridMapSquarePixi() {
       playerSprite.y = player.y * playerSpeed.px;
 
       // Animate player visibility area/lights
-      playerCoordObservers.map(co => {
+      playerCoordObservers.forEach(co => {
         // TODO: there is a problem with the vector not updating (particularly when changing direction??) resulting in the
         // light drifting away from the player (I think) – replicate this with no critters present.
         co.x += ms.vectorX * playerSpeed.px;
@@ -461,6 +473,8 @@ export default function GridMapSquarePixi() {
     playerSSMB
       .addSubscriber({subscriptionId: player.id, callback: playerUIUpdater})
       .addSubscriber({subscriptionId: player.id, callback: playerUIUpdaterForCritters});
+
+    setFinishedLoading(true);
   });
 
   onCleanup(() => {
@@ -468,6 +482,28 @@ export default function GridMapSquarePixi() {
     pixiApp().stage.destroy({children: true, texture: true, baseTexture: true}); // Should not be needed but…
     pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
   });
+
+  const startGame = () => {
+    if (!finishedLoading()) {
+      return;
+    }
+
+    setStartedGame(true);
+    playTimeTracker = setInterval(() => {
+      if (numberOfCrittersEaten() !== numberOfCritters) {
+        setPlayTime(pt => pt + 1);
+      } else {
+        clearInterval(playTimeTracker);
+      }
+    }, 1000);
+
+    // Always keep the character in the center of the scrollable div when it's moving
+    // (but allow scrolling inside the div when the character is not moving)
+    gridScrollableContainer()?.scroll({
+      left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
+      top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
+    });
+  };
 
   const movePlayerTo = async (cell: GridCell) => {
     if (!player) {
@@ -484,46 +520,93 @@ export default function GridMapSquarePixi() {
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
 
-  createEffect(() => {
-    // console.log(numberOfCrittersEaten());
-  });
-
   // TODO:
   //  1. Use Tailwind classes everywhere.
   //  2. Implement tests.
   return (
-    <div class={'text-center mt-14'}>
-      <Show when={hasPlacedRooms()} fallback={<h2>Generating {mapWidth}x{mapWidth} map…</h2>}>
-        {roomsJsx}
+    <div class={'text-center'}>
+      <Show when={false}> {/*TODO: these will be in the "debug" menu.*/}
+        <Show when={hasPlacedRooms()} fallback={<h2>Generating {mapWidth}x{mapWidth} map…</h2>}>
+          {roomsJsx}
+        </Show>
+        <Show when={hasPlacedCorridors()} fallback={<h2>Generating corridors…</h2>}>
+          {corridorsJsx}
+        </Show>
+        <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       </Show>
-      <Show when={hasPlacedCorridors()} fallback={<h2>Generating corridors…</h2>}>
-        {corridorsJsx}
-      </Show>
-      <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
-      <Show when={gridCells().length > 0 && pixiApp() && pixiApp().view}
-        fallback={<h2>Generating cells…</h2>}>
-        <div class={'relative inline-block'}>
-          <div id='score-container'
-            class={'absolute top-12 left-0 '}>
-            <h2 class={'text-3xl font-bold leading-loose ' +
-              'text-white pl-6 pt-1'}>
-              Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
-            </h2>
-          </div>
-          <div id='grid-scrollable-container'
-            class={'overflow-auto inline-block mt-12 ' +
-                 'max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-5xl ' +
-                 'max-h-[400px] md:max-h-[700px]'}>
-            <div style={{
-              width: `${gridCells().length * (cellWidth)}px`,
-              height: `${gridCells().length * (cellWidth)}px`,
-              'background-color': '#000',
-            }}>
-              {pixiApp().view as unknown as Element}
+      <div class={'relative inline-block'}>
+        {
+          numberOfCrittersEaten() === numberOfCritters &&
+          <>
+            <div class={'absolute top-0 left-0 w-full h-full z-10 '}
+              style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
+                   '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
+                   'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
+            <div class={'absolute top-0 left-0 bg-slate-800/75 w-full h-full ' +
+              'grid grid-cols-1 gap-8 content-center z-30 '}>
+              <p class={'text-2xl sm:text-3xl md:text-5xl font-bold leading-none text-white antialiased'}>
+                Congrats, you're full! *burp*
+              </p>
+              <button class="bg-slate-100 hover:bg-white text-slate-800 font-semibold
+                py-5 px-6 border border-gray-400 rounded-2xl shadow inline m-auto min-w-fit
+                text-xl md:text-2xl"
+              onClick={() => location.reload()}>Play again
+              </button>
             </div>
-          </div>
+          </>
+        }
+        <div id="grid-scrollable-container"
+          class={'inline-block w-screen h-screen shadow-2xl'}
+          classList={{
+            'overflow-auto': startedGame(),
+            'overflow-hidden': !startedGame(),
+          }}
+        >
+          {
+            (!finishedLoading() || !startedGame()) &&
+            <div onClick={() => startGame()}
+              class={'bg-slate-800 h-full w-full ' +
+              'grid grid-cols-1 gap-8 content-center z-30 '}
+              classList={{
+                'cursor-wait': !finishedLoading(),
+                'cursor-pointer': finishedLoading(),
+              }}
+            >
+              <p class={'text-2xl sm:text-3xl md:text-5xl font-bold leading-none text-white antialiased'}>
+                {!finishedLoading() && 'Loading…'}
+                {finishedLoading() && 'Click anywhere to start'}
+              </p>
+            </div>
+          }
+          {
+            finishedLoading() && startedGame() &&
+            <>
+              <div class={'absolute top-6 left-9 text-left z-20'}>
+                <div>
+                  <p class={'text-sm sm:text-base md:text-xl font-bold leading-none text-white'}>
+                    Time played: {formatSeconds(playTime())}
+                  </p>
+                </div>
+                <div class={'flex flex-wrap gap-x-4 gap-y-5'}>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
+                    Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
+                  </p>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none ' +
+                    'text-white'}>
+                    Buffs:
+                  </p>
+                </div>
+              </div>
+              <div style={{
+                width: `${mapWidth * cellWidth}px`,
+                height: `${mapWidth * cellWidth}px`,
+              }}>
+                {pixiApp().view as unknown as Element}
+              </div>
+            </>
+          }
         </div>
-      </Show>
+      </div>
     </div>
   );
 }
