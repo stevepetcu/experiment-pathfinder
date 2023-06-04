@@ -14,10 +14,10 @@ import {
 import { createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
+import {Character, DEFAULT_SPEED, getPlayer, Speed} from '../models/Character';
+import {CharacterBuff,getMilkCanBuff} from '../models/CharacterBuff';
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
-import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
-import {getMilkCanBuff, PlayerBuff} from '../models/PlayerBuff';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
@@ -91,17 +91,17 @@ export default function GridMapSquarePixi() {
   );
   // TODO: end "do I need signals here?"
 
-  let player: Player;
+  let player: Character;
   let playerSprite: AnimatedSprite;
   let characterTextures: CharacterTextureMap;
   const playerCoordObservers: Graphics[] = [];
 
-  const critters: Player[] = [];
+  const critters: Character[] = [];
   const critterSprites: { id: UUID, sprite: Sprite }[] = [];
-  const crittersEaten: Player['id'][] = [];
-  let critterBehaviour: (critter:Player) => void;
+  const crittersEaten: Character['id'][] = [];
+  let critterBehaviour: (critter:Character) => void;
 
-  const playerBuffs: PlayerBuff[] = [];
+  const playerBuffs: CharacterBuff[] = [];
   const [buffsJsx, setBuffsJsx] = createSignal(<div/>);
   const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
 
@@ -234,7 +234,7 @@ export default function GridMapSquarePixi() {
 
     container.addChild(playerSprite);
 
-    const critterUIUpdater = (critterInstance: Player, ssmb: SimpleSequenceMessageBroker) => {
+    const critterUIUpdater = (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite) {
         return;
       }
@@ -294,7 +294,7 @@ export default function GridMapSquarePixi() {
       }
     };
 
-    const playerUIUpdaterForCritters = (playerInstance: Player, _ssmb: SimpleSequenceMessageBroker) => {
+    const playerUIUpdaterForCritters = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerInstance.isAlive) {
         return;
       }
@@ -355,7 +355,7 @@ export default function GridMapSquarePixi() {
 
     // Generate critters
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
-    critterBehaviour = async (critter: Player) => {
+    critterBehaviour = async (critter: Character) => {
       if (!critter.isAlive) {
         return;
       }
@@ -476,7 +476,7 @@ export default function GridMapSquarePixi() {
 
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
 
-    const playerUIUpdater = (playerInstance: Player, _ssmb: SimpleSequenceMessageBroker) => {
+    const playerUIUpdater = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite || !playerInstance.isAlive) {
         return;
       }
@@ -518,7 +518,7 @@ export default function GridMapSquarePixi() {
           playerBuffs.push(milkBuff);
           setBuffsJsx(playerBuffs.map(buff => {
             return <img src={buff.spriteImage} alt={`${buff.affects} buff`}
-              class={'width-[30px] height-[30px]'}
+              class={'width-[25px] height-[25px]'}
             />;
           }));
           // TODO: Consider adding critters eaten as buffs (or 1 incremental buff),

@@ -1,14 +1,14 @@
-import {Player} from '../models/Player';
+import {Character} from '../models/Character';
 
 interface Subscription {
-  subscriptionId: Player['id'],
-  callback: (message: Player, ssmb: SimpleSequenceMessageBroker) => void
+  subscriptionId: Character['id'],
+  callback: (message: Character, ssmb: SimpleSequenceMessageBroker) => void
 }
 
 export interface SimpleSequenceMessageBroker {
-  publish: (message: Player) => void;
+  publish: (message: Character) => void;
   addSubscriber: (sub: Subscription) => SimpleSequenceMessageBroker;
-  removeSubscriber: (subscriptionId: Player['id']) => SimpleSequenceMessageBroker;
+  removeSubscriber: (subscriptionId: Character['id']) => SimpleSequenceMessageBroker;
 }
 
 // We'll not even implement a way to choose your subscriptions b/c
@@ -23,7 +23,7 @@ export default function getSSMB(): SimpleSequenceMessageBroker {
     return _this;
   };
 
-  const removeSubscriber = (subscriptionId: Player['id']): SimpleSequenceMessageBroker => {
+  const removeSubscriber = (subscriptionId: Character['id']): SimpleSequenceMessageBroker => {
     const subIndex = subscriptions.findIndex(sub => sub.subscriptionId === subscriptionId);
 
     if (subIndex > -1) {
@@ -33,7 +33,7 @@ export default function getSSMB(): SimpleSequenceMessageBroker {
     return _this;
   };
 
-  const publish = (message: Player) => {
+  const publish = (message: Character) => {
     subscriptions.forEach(sub => sub.callback(message, _this));
   };
 

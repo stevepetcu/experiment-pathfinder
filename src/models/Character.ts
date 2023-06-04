@@ -26,7 +26,7 @@ enum MovementDirection {
   NW = 'northwest'
 }
 
-export interface Player {
+export interface Character {
   id: UUID,
   x: Coords['x'];
   y: Coords['y'];
@@ -45,7 +45,7 @@ export interface Player {
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
 export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
-  ssmb: SimpleSequenceMessageBroker): Player => {
+  ssmb: SimpleSequenceMessageBroker): Character => {
 
   const id = crypto.randomUUID();
 
@@ -53,7 +53,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
     ssmb.publish(_this);
   };
 
-  const movementState: Player['movementState'] = {
+  const movementState: Character['movementState'] = {
     action: 'lookingAround',
     direction: MovementDirection.S,
     vectorX: 0,
