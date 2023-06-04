@@ -661,13 +661,16 @@ export default function GridMapSquarePixi() {
           {
             finishedLoading() && isGameStarted() &&
             <>
-              <div class={'absolute top-6 left-9 text-left z-20'}>
+              <div class={'absolute top-6 left-9 text-left z-20 ' +
+                'p-3 rounded-lg ' +
+                'bg-gradient-to-r from-slate-700/50 from-35% ' +
+                'outline outline-offset-2 outline-slate-700'}>
                 <div>
                   <p class={'text-sm sm:text-base md:text-xl font-bold leading-none text-white'}>
                     Time played: {formatSeconds(playTime())}
                   </p>
                 </div>
-                <div class={'flex flex-wrap gap-x-4 gap-y-5'}>
+                <div class={'flex flex-wrap gap-x-3 gap-y-6 items-center'}>
                   <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
                     Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
                   </p>
