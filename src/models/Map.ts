@@ -12,6 +12,9 @@ const LEVEL_TWO_ITERATION_COUNT_THRESHOLD = LEVEL_ONE_ITERATION_COUNT_THRESHOLD 
 const MAGIC_TO_REPLACE_LATER = 333;
 const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
 
+// TODO: update the signature and add an array of positions to avoid;
+//  This will help us… avoid stacking critters or buffs on top of the player.
+//  Add another method that generates a random position inside a specific room. Refactor.
 export const generateRandomPosition = (rooms: Room[]): Coords => {
   const randomRoom = rooms[randomInt(0, rooms.length)];
 

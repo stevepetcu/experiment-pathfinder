@@ -11,12 +11,13 @@ import {
   Sprite, Text,
   Texture,
 } from 'pixi.js';
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import { createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {DEFAULT_SPEED, getPlayer, Player, Speed} from '../models/Player';
+import {getMilkCanBuff, PlayerBuff} from '../models/PlayerBuff';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
@@ -97,6 +98,10 @@ export default function GridMapSquarePixi() {
   const critters: Player[] = [];
   const critterSprites: { id: UUID, sprite: Sprite }[] = [];
   const crittersEaten: Player['id'][] = [];
+  let critterBehaviour: (critter:Player) => void;
+
+  const playerBuffs: PlayerBuff[] = [];
+  const [buffsJsx, setBuffsJsx] = createSignal(<div/>);
   const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
 
   let playTimeTracker: NodeJS.Timer;
@@ -107,7 +112,7 @@ export default function GridMapSquarePixi() {
 
   const [finishedLoading, setFinishedLoading] = createSignal(false);
   const [loadingProgress, setLoadingProgress] = createSignal(0);
-  const [startedGame, setStartedGame] = createSignal(false);
+  const [isGameStarted, setIsGameStarted] = createSignal(false);
 
   onMount(async () => {
     const smokeAndMirrorsLoading = async () => {
@@ -235,7 +240,7 @@ export default function GridMapSquarePixi() {
 
       const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
 
-      if (!critterSprite) {
+      if (!critterSprite || critterSprite.sprite.destroyed) {
         return;
       }
 
@@ -282,6 +287,8 @@ export default function GridMapSquarePixi() {
           light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
 
           spotLightRadius = spotLightRadius * 1.1;
+
+          critterSprite.sprite.destroy();
         }
       }
     };
@@ -300,7 +307,7 @@ export default function GridMapSquarePixi() {
 
         const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
 
-        if (!critterSprite) {
+        if (!critterSprite || critterSprite.sprite.destroyed) {
           return;
         }
 
@@ -325,8 +332,8 @@ export default function GridMapSquarePixi() {
         }
         if (distanceToPlayer < spotLightRadius * 0.1) {
           // critterSprite.sprite.tint = 'blue';
-          critterInstance.setIsAlive(false);
           if (!crittersEaten.includes(critterInstance.id)) {
+            critterInstance.setIsAlive(false);
             crittersEaten.push(critterInstance.id);
             // Could also be "setNumberOfCrittersEaten(n => ++n);"
             // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
@@ -338,6 +345,8 @@ export default function GridMapSquarePixi() {
             light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
 
             spotLightRadius = spotLightRadius * 1.25;
+
+            critterSprite.sprite.destroy();
           }
         }
       }
@@ -345,8 +354,8 @@ export default function GridMapSquarePixi() {
 
     // Generate critters
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
-    const critterBehaviour = async (critter: Player) => {
-      if (!startedGame() || !critter.isAlive) {
+    critterBehaviour = async (critter: Player) => {
+      if (!critter.isAlive) {
         return;
       }
 
@@ -392,10 +401,21 @@ export default function GridMapSquarePixi() {
 
       critterSSMB
         .addSubscriber({subscriptionId: critter.id, callback: critterUIUpdater});
-
-      critterBehaviour(critter);
     }
     // End "Generate critters"
+
+    // Add can of milk
+    const buffTextures = await Assets.loadBundle('buffs');
+    const randomMilkCanPosition = generateRandomPosition(generatedRooms);
+    const canOfMilkSprite = new Sprite(buffTextures['milk']);
+    canOfMilkSprite.width = cellWidth/2;
+    canOfMilkSprite.height = cellWidth/2;
+    canOfMilkSprite.x = randomMilkCanPosition.x * cellWidth + cellWidth/4;
+    canOfMilkSprite.y = randomMilkCanPosition.y * cellWidth + cellWidth/4;
+    canOfMilkSprite.alpha = 0;
+
+    container.addChild(canOfMilkSprite);
+    // End "Add can of milk"
 
     light.beginFill();
     light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
@@ -460,9 +480,6 @@ export default function GridMapSquarePixi() {
         return;
       }
 
-      console.debug('Player message:');
-      console.debug(playerInstance);
-
       // Animate player sprite
       const ms = playerInstance.movementState;
       const runningFpsDivider = numberOfCrittersEaten() === 0 ? 1 : 5 * numberOfCrittersEaten();
@@ -475,11 +492,42 @@ export default function GridMapSquarePixi() {
 
       // Animate player visibility area/lights
       playerCoordObservers.forEach(co => {
-        // TODO: there is a problem with the vector not updating (particularly when changing direction??) resulting in the
-        // light drifting away from the player (I think) – replicate this with no critters present.
         co.x += ms.vectorX * playerSpeed.px;
         co.y += ms.vectorY * playerSpeed.px;
       });
+
+
+      if (!canOfMilkSprite.destroyed) {
+        const distanceToPlayer = calcDiagonalDistance(
+          {x: canOfMilkSprite.x, y: canOfMilkSprite.y},
+          {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
+        );
+        if (distanceToPlayer >= spotLightRadius) {
+          canOfMilkSprite.alpha = 0;
+        }
+        if (distanceToPlayer < spotLightRadius) {
+          canOfMilkSprite.alpha = 0.35;
+        }
+        if (distanceToPlayer < spotLightRadius * 0.7) {
+          canOfMilkSprite.alpha = 1;
+        }
+        // TODO: consider using sprite's bounds intersection/hit boxes?
+        if (distanceToPlayer < spotLightRadius * 0.1) {
+          const milkBuff = getMilkCanBuff();
+          playerBuffs.push(milkBuff);
+          setBuffsJsx(playerBuffs.map(buff => {
+            return <img src={buff.spriteImage} alt={`${buff.affects} buff`}
+              class={'width-[30px] height-[30px]'}
+            />;
+          }));
+          // TODO: Consider adding critters eaten as buffs (or 1 incremental buff),
+          //  alongside this buff and calculating the speed of the player dynamically based on the buffs.
+          //  This would enable us to remove buffs easily, as well as adding new ones.
+          playerSpeed.ms *= milkBuff.magnitude;
+
+          canOfMilkSprite.destroy();
+        }
+      }
 
       gridScrollableContainer()?.scroll({
         left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
@@ -505,7 +553,11 @@ export default function GridMapSquarePixi() {
       return;
     }
 
-    setStartedGame(true);
+    for (const critter of critters) {
+      critterBehaviour(critter);
+    }
+
+    setIsGameStarted(true);
     playTimeTracker = setInterval(() => {
       if (numberOfCrittersEaten() !== numberOfCritters) {
         setPlayTime(pt => pt + 1);
@@ -575,12 +627,12 @@ export default function GridMapSquarePixi() {
         <div id="grid-scrollable-container"
           class={'inline-block w-screen h-screen shadow-2xl'}
           classList={{
-            'overflow-auto': startedGame(),
-            'overflow-hidden': !startedGame(),
+            'overflow-auto': isGameStarted(),
+            'overflow-hidden': !isGameStarted(),
           }}
         >
           {
-            (!finishedLoading() || !startedGame()) &&
+            (!finishedLoading() || !isGameStarted()) &&
             <div onClick={() => startGame()}
               class={'bg-slate-800 h-full w-full ' +
               'grid grid-cols-1 gap-8 content-center z-30 '}
@@ -606,7 +658,7 @@ export default function GridMapSquarePixi() {
             </div>
           }
           {
-            finishedLoading() && startedGame() &&
+            finishedLoading() && isGameStarted() &&
             <>
               <div class={'absolute top-6 left-9 text-left z-20'}>
                 <div>
@@ -622,6 +674,7 @@ export default function GridMapSquarePixi() {
                     'text-white'}>
                     Buffs:
                   </p>
+                  {buffsJsx()}
                 </div>
               </div>
               <div style={{

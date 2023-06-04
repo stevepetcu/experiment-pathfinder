@@ -474,6 +474,15 @@
           "srcs": "/assets/character/running/northwest/7.png"
         }
       ]
+    },
+    {
+      "name": "buffs",
+      "assets": [
+        {
+          "name": "milk",
+          "srcs": "/assets/buffs/milk.png"
+        }
+      ]
     }
   ]
 }
