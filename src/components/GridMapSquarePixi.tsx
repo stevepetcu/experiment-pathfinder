@@ -692,7 +692,7 @@ export default function GridMapSquarePixi() {
           </>
         }
         <div id="grid-scrollable-container"
-          class={'inline-block w-screen h-screen shadow-2xl'}
+          class={'inline-block w-screen h-screen'}
           classList={{
             'overflow-auto': isGameStarted(),
             'overflow-hidden': !isGameStarted(),

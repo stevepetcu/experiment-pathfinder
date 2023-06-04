@@ -4,7 +4,7 @@ import GridMapSquarePixi from './components/GridMapSquarePixi';
 
 const App: Component = () => {
   return (
-    <div id='my-app' class={'container mx-0 font-amatic'}>
+    <div id='my-app' class={'container m-0 font-amatic'}>
       <GridMapSquarePixi />
     </div>
   );
