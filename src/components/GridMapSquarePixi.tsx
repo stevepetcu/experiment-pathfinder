@@ -59,7 +59,8 @@ export default function GridMapSquarePixi() {
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
   let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
-  const baseRunningFps = 5/250;
+  const baseRunningFps = 7/20;
+  const baseLookingAroundFps = 5/250;
   // End "These settings are not user-configurable"
 
   const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
@@ -224,7 +225,7 @@ export default function GridMapSquarePixi() {
     const charRunningTextures = await Assets.loadBundle('character-running');
     characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
     playerSprite = new AnimatedSprite(characterTextures.lookingAround.south, true);
-    playerSprite.animationSpeed = baseRunningFps; // TODO: extract this as a constant.
+    playerSprite.animationSpeed = baseLookingAroundFps; // TODO: extract this as a constant.
     playerSprite.play();
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
@@ -482,8 +483,8 @@ export default function GridMapSquarePixi() {
 
       // Animate player sprite
       const ms = playerInstance.movementState;
-      const runningFpsDivider = numberOfCrittersEaten() === 0 ? 1 : 5 * numberOfCrittersEaten();
-      const fps = ms.action === 'running' ? 7/20 : baseRunningFps/runningFpsDivider; // has to be a multiple of the number of textures.
+      const runningFpsDivider = baseRunningFps/(1 + numberOfCrittersEaten()/30);
+      const fps = ms.action === 'running' ? runningFpsDivider : baseLookingAroundFps; // has to be a multiple of the number of textures.
       playerSprite.textures = characterTextures[ms.action][ms.direction];
       playerSprite.animationSpeed = fps;
       playerSprite.play();
