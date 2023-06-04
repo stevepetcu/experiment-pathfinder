@@ -6,8 +6,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'nunito': ['nunito', 'serif'],
-        'amatic': ['Amatic SC', 'serif'],
+        'vt323': ['VT323', 'serif'],
       },
     },
   },

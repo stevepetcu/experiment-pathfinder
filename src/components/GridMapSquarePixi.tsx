@@ -14,7 +14,7 @@ import {
   Text,
   Texture,
 } from 'pixi.js';
-import {createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
 import {Character, DEFAULT_SPEED, getPlayer, Speed} from '../models/Character';
@@ -26,6 +26,7 @@ import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {formatSeconds} from '../utils/Time';
+import BuffsDisplay from './BuffsDisplay';
 
 // interface GridMapSquareProps {
 //   // TODO: add props
@@ -54,7 +55,7 @@ export interface CharacterTextureMap {
   }
 }
 
-export default function GridMapSquarePixi() {
+export default function GridMapSquarePixi(): JSXElement {
   // These settings are not user-configurable
   const cellWidth = 45;
   const mapWidth = 50;
@@ -107,7 +108,8 @@ export default function GridMapSquarePixi() {
   let critterBehaviour: (critter:Character) => void;
 
   const playerBuffs: CharacterBuff[] = [];
-  const [buffsJsx, setBuffsJsx] = createSignal(<div/>);
+  // const [pb, setPb] = createSignal<CharacterBuff[]>([]); // TODO figure out why this doesn't update.
+  const [buffsJsx, setBuffsJsx] = createSignal(<BuffsDisplay buffs={[]}/>);
   const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
 
   let playTimeTracker: NodeJS.Timer;
@@ -309,16 +311,8 @@ export default function GridMapSquarePixi() {
           light3.scale.set(sightBoost, sightBoost);
           spotLightRadius = baseSpotLightRadius * sightBoost;
 
-          setBuffsJsx(playerBuffs.map(buff => {
-            return <>
-              <img src={buff.spriteImage} alt={buff.description}
-                class={'width-[25px] height-[25px]'}
-              />
-              {buff.stacks > 1 &&
-                <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
-              }
-            </>;
-          }));
+          setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
+          // setPb(playerBuffs);
 
           critterSprite.sprite.destroy();
         }
@@ -393,16 +387,8 @@ export default function GridMapSquarePixi() {
             light3.scale.set(sightBoost, sightBoost);
             spotLightRadius = baseSpotLightRadius * sightBoost;
 
-            setBuffsJsx(playerBuffs.map(buff => {
-              return <>
-                <img src={buff.spriteImage} alt={buff.description}
-                  class={'width-[25px] height-[25px]'}
-                />
-                {buff.stacks > 1 &&
-                  <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
-                }
-              </>;
-            }));
+            setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
+            // setPb(playerBuffs);
 
             critterSprite.sprite.destroy();
           }
@@ -561,7 +547,7 @@ export default function GridMapSquarePixi() {
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
         if (distanceToPlayer >= spotLightRadius) {
-          canOfMilkSprite.alpha = 0;
+          canOfMilkSprite.alpha = 1;
         }
         if (distanceToPlayer < spotLightRadius) {
           canOfMilkSprite.alpha = 0.35;
@@ -581,16 +567,8 @@ export default function GridMapSquarePixi() {
           playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
           console.log('Player speed: ', playerSpeed.ms);
 
-          setBuffsJsx(playerBuffs.map(buff => {
-            return <>
-              <img src={buff.spriteImage} alt={buff.description}
-                class={'width-[25px] height-[25px]'}
-              />
-              {buff.stacks > 1 &&
-                <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
-              }
-            </>;
-          }));
+          setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
+          // setPb(playerBuffs);
 
           canOfMilkSprite.destroy();
         }
@@ -719,31 +697,36 @@ export default function GridMapSquarePixi() {
               }
               {
                 finishedLoading() &&
-                <p class={'text-2xl sm:text-3xl md:text-5xl font-bold ' +
+                <>
+                  <p class={'text-3xl sm:text-4xl md:text-6xl ' +
+                  'leading-none text-white antialiased'}>Eat all the fish and survive</p>
+                  <p class={'text-2xl sm:text-3xl md:text-4xl ' +
                   'leading-none text-white antialiased'}>Click anywhere to start</p>
+                </>
               }
             </div>
           }
           {
             finishedLoading() && isGameStarted() &&
             <>
-              <div class={'absolute top-6 left-9 text-left z-20 ' +
-                'p-3 rounded-lg ' +
-                'bg-gradient-to-r from-slate-700/50 from-35% ' +
+              <div class={'absolute top-5 left-[3%] text-left z-20 ' +
+                'p-3 slashed-zero rounded-lg ' +
+                'bg-gradient-to-r from-slate-700/50 from-45% ' +
                 'outline outline-offset-2 outline-slate-700'}>
                 <div>
-                  <p class={'text-sm sm:text-base md:text-xl font-bold leading-none text-white'}>
+                  <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}>
                     Time played: {formatSeconds(playTime())}
                   </p>
                 </div>
-                <div class={'flex flex-wrap gap-x-3 gap-y-6 items-center'}>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
-                    Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
+                <div class={'flex flex-wrap gap-x-3 gap-y-4 items-center max-w-[330px] sm:max-w-sm md:max-w-md'}>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}>
+                    Fish left: {numberOfCritters - numberOfCrittersEaten()}
                   </p>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-9 text-white'}>
                     Buffs:
                   </p>
                   {buffsJsx()}
+                  {/*<BuffsDisplay buffs={pb()}/>*/}
                 </div>
               </div>
               <div style={{
