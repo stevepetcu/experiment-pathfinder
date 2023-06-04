@@ -722,9 +722,6 @@ export default function GridMapSquarePixi(): JSXElement {
                   <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}>
                     Fish left: {numberOfCritters - numberOfCrittersEaten()}
                   </p>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-9 text-white'}>
-                    Buffs:
-                  </p>
                   {buffsJsx()}
                   {/*<BuffsDisplay buffs={pb()}/>*/}
                 </div>
