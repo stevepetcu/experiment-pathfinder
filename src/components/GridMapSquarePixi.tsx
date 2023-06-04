@@ -2,20 +2,23 @@ import {ColorGradientFilter} from '@pixi/filter-color-gradient';
 import {UUID} from 'crypto';
 import {
   AlphaFilter,
-  AnimatedSprite, Application,
+  AnimatedSprite,
+  Application,
   Assets,
   BLEND_MODES,
-  Color, Container,
+  Color,
+  Container,
   Graphics,
   MSAA_QUALITY,
-  Sprite, Text,
+  Sprite,
+  Text,
   Texture,
 } from 'pixi.js';
-import { createSignal, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
 import {Character, DEFAULT_SPEED, getPlayer, Speed} from '../models/Character';
-import {CharacterBuff,getMilkCanBuff} from '../models/CharacterBuff';
+import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
@@ -58,12 +61,14 @@ export default function GridMapSquarePixi() {
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
+  const baseSpotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
   let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
   const baseRunningFps = 7/20;
   const baseLookingAroundFps = 5/250;
   // End "These settings are not user-configurable"
 
-  const playerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth}; // TODO: this is pretty atrocious.
+  const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
+  const playerSpeed = {...basePlayerSpeed}; // TODO: this is pretty atrocious.
   const critterSpeed: Speed = {ms: 500, px: cellWidth};
 
   // TODO do I need signals here?
@@ -211,7 +216,7 @@ export default function GridMapSquarePixi() {
 
     const fogOfWar = new Graphics();
     fogOfWar.beginFill('rgb(2, 6, 23)');
-    fogOfWar.drawRect(0, 0, pixiApp().view.width, pixiApp().view.height);
+    fogOfWar.drawRect(0, 0, mapWidth * cellWidth, mapWidth * cellWidth);
     fogOfWar.endFill();
     const filter = new AlphaFilter(0.75);
     fogOfWar.filters = [filter];
@@ -278,16 +283,42 @@ export default function GridMapSquarePixi() {
       }
       if (distanceToPlayer < spotLightRadius * 0.1) {
         // critterSprite.sprite.tint = 'blue';
-        critterInstance.setIsAlive(false);
         if (!crittersEaten.includes(critterInstance.id)) {
+          critterInstance.setIsAlive(false);
           crittersEaten.push(critterInstance.id);
           setNumberOfCrittersEaten(n => n + 1);
-          playerSpeed.ms = playerSpeed.ms * 0.75;
-          light.scale.set(light.scale.x * 1.25, light.scale.y * 1.25);
-          light2.scale.set(light2.scale.x * 1.25, light2.scale.y * 1.25);
-          light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
 
-          spotLightRadius = spotLightRadius * 1.1;
+          const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
+          if (blobFishBuffIndex < 0) {
+            playerBuffs.push(getBlobfishBuff());
+          } else {
+            playerBuffs[blobFishBuffIndex].stacks++;
+          }
+
+          let speedBoost = 0;
+          let sightBoost = 1;
+          for (const buff of playerBuffs) {
+            speedBoost += (buff.traits.speed || 0) * buff.stacks;
+            sightBoost += (buff.traits.sight || 0) * buff.stacks;
+          }
+
+          playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+          console.log('Player speed: ', playerSpeed.ms);
+          light.scale.set(sightBoost, sightBoost);
+          light2.scale.set(sightBoost, sightBoost);
+          light3.scale.set(sightBoost, sightBoost);
+          spotLightRadius = baseSpotLightRadius * sightBoost;
+
+          setBuffsJsx(playerBuffs.map(buff => {
+            return <>
+              <img src={buff.spriteImage} alt={buff.description}
+                class={'width-[25px] height-[25px]'}
+              />
+              {buff.stacks > 1 &&
+                <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
+              }
+            </>;
+          }));
 
           critterSprite.sprite.destroy();
         }
@@ -340,12 +371,38 @@ export default function GridMapSquarePixi() {
             // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
             // setNumberOfCrittersEaten(n => n++); - b/c n++ returns before it adds? Spent 30 min debugging that 💩.
             setNumberOfCrittersEaten(n => n + 1);
-            playerSpeed.ms = playerSpeed.ms * 0.75;
-            light.scale.set(light.scale.x * 1.25, light.scale.y * 1.25);
-            light2.scale.set(light2.scale.x * 1.25, light2.scale.y * 1.25);
-            light3.scale.set(light3.scale.x * 1.25, light3.scale.y * 1.25);
 
-            spotLightRadius = spotLightRadius * 1.25;
+            const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
+            if (blobFishBuffIndex < 0) {
+              playerBuffs.push(getBlobfishBuff());
+            } else {
+              playerBuffs[blobFishBuffIndex].stacks++;
+            }
+
+            let speedBoost = 0;
+            let sightBoost = 1;
+            for (const buff of playerBuffs) {
+              speedBoost += (buff.traits.speed || 0) * buff.stacks;
+              sightBoost += (buff.traits.sight || 0) * buff.stacks;
+            }
+
+            playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+            console.log('Player speed: ', playerSpeed.ms);
+            light.scale.set(sightBoost, sightBoost);
+            light2.scale.set(sightBoost, sightBoost);
+            light3.scale.set(sightBoost, sightBoost);
+            spotLightRadius = baseSpotLightRadius * sightBoost;
+
+            setBuffsJsx(playerBuffs.map(buff => {
+              return <>
+                <img src={buff.spriteImage} alt={buff.description}
+                  class={'width-[25px] height-[25px]'}
+                />
+                {buff.stacks > 1 &&
+                  <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
+                }
+              </>;
+            }));
 
             critterSprite.sprite.destroy();
           }
@@ -419,7 +476,7 @@ export default function GridMapSquarePixi() {
     // End "Add can of milk"
 
     light.beginFill();
-    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
+    light.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, baseSpotLightRadius);
     light.endFill();
     light.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     light.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
@@ -438,7 +495,7 @@ export default function GridMapSquarePixi() {
     };
 
     light2.beginFill();
-    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
+    light2.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, baseSpotLightRadius);
     light2.endFill();
     light2.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     light2.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
@@ -461,7 +518,7 @@ export default function GridMapSquarePixi() {
     };
 
     light3.beginFill();
-    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, spotLightRadius);
+    light3.drawCircle(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2, baseSpotLightRadius);
     light3.endFill();
     light3.pivot.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
     light3.position.set(playerSprite.x + cellWidth / 2, playerSprite.y + cellWidth / 2);
@@ -514,17 +571,26 @@ export default function GridMapSquarePixi() {
         }
         // TODO: consider using sprite's bounds intersection/hit boxes?
         if (distanceToPlayer < spotLightRadius * 0.1) {
-          const milkBuff = getMilkCanBuff();
-          playerBuffs.push(milkBuff);
+          playerBuffs.push(getMilkCanBuff());
+
+          let speedBoost = 0;
+          for (const buff of playerBuffs) {
+            speedBoost += (buff.traits.speed || 0) * buff.stacks;
+          }
+
+          playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+          console.log('Player speed: ', playerSpeed.ms);
+
           setBuffsJsx(playerBuffs.map(buff => {
-            return <img src={buff.spriteImage} alt={`${buff.affects} buff`}
-              class={'width-[25px] height-[25px]'}
-            />;
+            return <>
+              <img src={buff.spriteImage} alt={buff.description}
+                class={'width-[25px] height-[25px]'}
+              />
+              {buff.stacks > 1 &&
+                <p class={'text-base sm:text-xl md:text-2xl font-bold leading-none text-white'}>x {buff.stacks}</p>
+              }
+            </>;
           }));
-          // TODO: Consider adding critters eaten as buffs (or 1 incremental buff),
-          //  alongside this buff and calculating the speed of the player dynamically based on the buffs.
-          //  This would enable us to remove buffs easily, as well as adding new ones.
-          playerSpeed.ms *= milkBuff.magnitude;
 
           canOfMilkSprite.destroy();
         }
@@ -674,8 +740,7 @@ export default function GridMapSquarePixi() {
                   <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
                     Blobfish eaten: {numberOfCrittersEaten()}/{numberOfCritters}
                   </p>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none ' +
-                    'text-white'}>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-none text-white'}>
                     Buffs:
                   </p>
                   {buffsJsx()}
