@@ -3,6 +3,7 @@ import {UUID} from 'crypto';
 import {Coords} from './Coords';
 import {Corridor} from './Corridor';
 
+// TODO: should probably merge RoomDto with Room, since we're not using a backend service anymore.
 export interface RoomDto {
   id: UUID;
   topLeft: Coords;

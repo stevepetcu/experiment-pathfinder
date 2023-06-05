@@ -17,9 +17,14 @@ import {
 import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
-import {Character, DEFAULT_SPEED, getPlayer, Speed} from '../models/Character';
+import {Character, DEFAULT_SPEED, getCharacter, Speed} from '../models/Character';
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
-import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
+import {
+  generateCorridors,
+  generateRandomCoordsInRandomRoom,
+  generateRandomCoordsInSpecificRoom,
+  generateRooms,
+} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import delay from '../utils/Delay';
@@ -73,7 +78,11 @@ export default function GridMapSquarePixi(): JSXElement {
   //  Just pick one of them, since they must always be equal.
   const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
+
   const critterSpeed: Speed = {ms: 500, px: cellWidth};
+
+  const baseGhostSpeed = {ms: 150, px: cellWidth};
+  const ghostSpeed = {...baseGhostSpeed};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -108,7 +117,17 @@ export default function GridMapSquarePixi(): JSXElement {
   const critters: Character[] = [];
   const critterSprites: { id: UUID, sprite: Sprite }[] = [];
   const crittersEaten: Character['id'][] = [];
-  let critterBehaviour: (critter:Character) => void;
+  let critterBehaviour: (critter: Character, playerInstance: Character) => void;
+  let ghostBehaviour: (ghost: Character, playerInstance: Character, ghostSpawnTimeInMs: number) => void;
+
+  let ghost: Character;
+  const initialGhostSpawnTime = 3000; // TODO: set to 15000 or 20000 initially
+  // let ghostSprite: AnimatedSprite;
+  const ghostTexture = Texture.WHITE;
+  const ghostSprite = new Sprite(ghostTexture);
+  ghostSprite.width = cellWidth / 2;
+  ghostSprite.height = cellWidth / 2;
+  ghostSprite.tint = 'green';
 
   const playerBuffs: CharacterBuff[] = [];
   // const [pb, setPb] = createSignal<CharacterBuff[]>([]); // TODO figure out why this doesn't update.
@@ -120,6 +139,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
   const playerSSMB = getSSMB();
   const critterSSMB = getSSMB();
+  const ghostSSMB = getSSMB();
 
   const [finishedLoading, setFinishedLoading] = createSignal(false);
   const [loadingProgress, setLoadingProgress] = createSignal(0);
@@ -154,7 +174,7 @@ export default function GridMapSquarePixi(): JSXElement {
     setTimeToPlaceRooms(endRooms - startRooms);
 
     // Generate and set player position:
-    const playerRandomStartingPosition = generateRandomPosition(generatedRooms);
+    const randomPlayerStartingCoords = generateRandomCoordsInRandomRoom(generatedRooms);
 
     // Generate and place corridors:
     const startCorridors = Date.now();
@@ -169,7 +189,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     // TODO: arrange the code a bit better. These guys have to be created after we've added the subscription to
     //  the message broker, lest they get born "inanimate". I must figure out why things break if I move this below.
-    player = getPlayer(pathfinder(), playerRandomStartingPosition, playerSSMB);
+    player = getCharacter(pathfinder(), randomPlayerStartingCoords, playerSSMB);
 
     setGridCells(generatedGrid.cells);
 
@@ -340,7 +360,7 @@ export default function GridMapSquarePixi(): JSXElement {
       }
     };
 
-    const playerUIUpdaterForCritters = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
+    const playerUpdaterForCritters = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerInstance.isAlive) {
         return;
       }
@@ -418,26 +438,29 @@ export default function GridMapSquarePixi(): JSXElement {
 
     // Generate critters
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
-    critterBehaviour = async (critter: Character) => {
+    critterBehaviour = async (critter: Character, playerInstance: Character) => {
       if (!critter.isAlive) {
         return;
       }
 
-      const randomLocation = generateRandomPosition(generatedRooms);
+      const randomLocation = generateRandomCoordsInRandomRoom(
+        generatedRooms,
+        {x: playerInstance.x, y: playerInstance.y},
+      );
 
       await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
 
       // Wait 2 seconds after reaching the destination.
       await delay(2000);
-      await critterBehaviour(critter);
+      await critterBehaviour(critter, playerInstance);
     };
 
     for (let i = 0; i < numberOfCritters; i++) {
-      const critterRandomStartingPosition = generateRandomPosition(generatedRooms);
+      const randomCritterStartingCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
       const critterPathFinder = getPathfinder(generatedGrid);
-      const critter = getPlayer(
+      const critter = getCharacter(
         critterPathFinder,
-        critterRandomStartingPosition,
+        randomCritterStartingCoords,
         critterSSMB,
       );
 
@@ -467,14 +490,68 @@ export default function GridMapSquarePixi(): JSXElement {
     }
     // End "Generate critters"
 
+    // Ghosts stuff
+    container.addChild(ghostSprite); // TODO: replace with animated ghost sprite.
+
+    const ghostPathfinder = getPathfinder(generatedGrid);
+    ghost = getCharacter(ghostPathfinder, {x: -1, y: -1}, ghostSSMB);
+    const playerUpdaterForGhosts = async (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
+      if (!playerInstance.isAlive) {
+        return;
+      }
+
+      // TODO: If the player meets the ghost, do things.
+    };
+
+    ghostBehaviour = async (ghost: Character, playerInstance: Character, ghostSpawnTimeInMs: number) => {
+      console.log(ghostSpawnTimeInMs);
+      await delay(ghostSpawnTimeInMs);
+      const playerCell = ghost.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
+      const playerRoom = generatedRooms.find(room => room.roomDto.id === playerCell.roomId);
+
+      if (!playerRoom) {
+        return; // Don't generate ghosts in corridors.
+      }
+
+      const randomGhostSpawningCoords = generateRandomCoordsInSpecificRoom(
+        playerRoom,
+        {x: playerInstance.x, y: playerInstance.y},
+      );
+
+      ghost.x = randomGhostSpawningCoords.x;
+      ghost.y = randomGhostSpawningCoords.y;
+
+      ghostSprite.x = ghost.x * ghostSpeed.px + cellWidth / 4;
+      ghostSprite.y = ghost.y * ghostSpeed.px + cellWidth / 4;
+
+      // TODO:
+      //  Set a timeout before the ghost starts moving. The timeout should become smaller every 10 seconds.
+      //  Set ghost move target and get it moving.
+      //  Set a speed for the ghost (significantly higher than the player's speed)
+      await ghostBehaviour(ghost, playerInstance, Math.max(ghostSpawnTimeInMs - 500, 1000));
+    };
+
+    const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
+      if (!ghost.isAlive) {
+        return;
+      }
+
+      // TODO: update ghost sprite when the ghost moves.
+      //  If the ghost meets the player, do things.
+    };
+
+    ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUiUpdater});
+
+    // End "Ghosts stuff"
+
     // Add can of milk
     const buffTextures = await Assets.loadBundle('buffs');
-    const randomMilkCanPosition = generateRandomPosition(generatedRooms);
+    const randomMilkCanCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
     const canOfMilkSprite = new Sprite(buffTextures['milk']);
     canOfMilkSprite.width = cellWidth/2;
     canOfMilkSprite.height = cellWidth/2;
-    canOfMilkSprite.x = randomMilkCanPosition.x * cellWidth + cellWidth/4;
-    canOfMilkSprite.y = randomMilkCanPosition.y * cellWidth + cellWidth/4;
+    canOfMilkSprite.x = randomMilkCanCoords.x * cellWidth + cellWidth/4;
+    canOfMilkSprite.y = randomMilkCanCoords.y * cellWidth + cellWidth/4;
     canOfMilkSprite.alpha = 0;
 
     container.addChild(canOfMilkSprite);
@@ -565,7 +642,8 @@ export default function GridMapSquarePixi(): JSXElement {
         co.y += ms.vectorY * playerSpeed.px;
       });
 
-
+      // Check if the player character reached an upgrade/buff.
+      // TODO: this could be its own callback but given there's only one buff at the moment, that's not necessary yet.
       if (!canOfMilkSprite.destroyed) {
         const distanceToPlayer = calcDiagonalDistance(
           {x: canOfMilkSprite.x, y: canOfMilkSprite.y},
@@ -606,7 +684,8 @@ export default function GridMapSquarePixi(): JSXElement {
 
     playerSSMB
       .addSubscriber({subscriptionId: player.id, callback: playerUIUpdater})
-      .addSubscriber({subscriptionId: player.id, callback: playerUIUpdaterForCritters});
+      .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForCritters})
+      .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
     setFinishedLoading(true);
   });
@@ -623,8 +702,10 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     for (const critter of critters) {
-      critterBehaviour(critter);
+      critterBehaviour(critter, player);
     }
+
+    ghostBehaviour(ghost, player, initialGhostSpawnTime);
 
     setIsGameStarted(true);
     playTimeTracker = setInterval(() => {

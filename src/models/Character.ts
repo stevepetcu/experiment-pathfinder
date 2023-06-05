@@ -45,7 +45,7 @@ export interface Character {
 }
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
-export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
+export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
   ssmb: SimpleSequenceMessageBroker): Character => {
 
   const id = crypto.randomUUID();

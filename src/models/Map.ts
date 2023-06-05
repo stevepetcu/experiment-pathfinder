@@ -15,11 +15,26 @@ const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
 // TODO: update the signature and add an array of positions to avoid;
 //  This will help us… avoid stacking critters or buffs on top of the player.
 //  Add another method that generates a random position inside a specific room. Refactor.
-export const generateRandomPosition = (rooms: Room[]): Coords => {
+export const generateRandomCoordsInRandomRoom = (rooms: Room[], avoidPoint?: Coords): Coords => {
   const randomRoom = rooms[randomInt(0, rooms.length)];
 
   const x = randomInt(randomRoom.leftX(), randomRoom.rightX() + 1); // randomInt max is exclusive
   const y = randomInt(randomRoom.topY(), randomRoom.bottomY() + 1); // randomInt max is exclusive
+
+  if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
+    return generateRandomCoordsInRandomRoom(rooms, avoidPoint);
+  }
+
+  return {x, y};
+};
+
+export const generateRandomCoordsInSpecificRoom = (room: Room, avoidPoint?: Coords): Coords => {
+  const x = randomInt(room.leftX(), room.rightX() + 1); // randomInt max is exclusive
+  const y = randomInt(room.topY(), room.bottomY() + 1); // randomInt max is exclusive
+
+  if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
+    return generateRandomCoordsInSpecificRoom(room, avoidPoint);
+  }
 
   return {x, y};
 };
