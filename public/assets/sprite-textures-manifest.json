@@ -483,6 +483,27 @@
           "srcs": "/assets/buffs/milk.png"
         }
       ]
+    },
+    {
+      "name": "dust",
+      "assets": [
+        {
+          "name": "frame_00",
+          "srcs": "/assets/dust/frame_00.png"
+        },
+        {
+          "name": "frame_01",
+          "srcs": "/assets/dust/frame_01.png"
+        },
+        {
+          "name": "frame_02",
+          "srcs": "/assets/dust/frame_02.png"
+        },
+        {
+          "name": "frame_03",
+          "srcs": "/assets/dust/frame_03.png"
+        }
+      ]
     }
   ]
 }

@@ -68,8 +68,10 @@ export default function GridMapSquarePixi(): JSXElement {
   const baseLookingAroundFps = 5/250;
   // End "These settings are not user-configurable"
 
+  // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
+  //  Just pick one of them, since they must always be equal.
   const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
-  const playerSpeed = {...basePlayerSpeed}; // TODO: this is pretty atrocious.
+  const playerSpeed = {...basePlayerSpeed};
   const critterSpeed: Speed = {ms: 500, px: cellWidth};
 
   // TODO do I need signals here?
@@ -175,7 +177,7 @@ export default function GridMapSquarePixi(): JSXElement {
     // Add textures:
     // TODO: sort out the caching issue;
     //  not sure if it's to do w/ files having the same names + it doesn't account for their path, or what.
-    await Assets.init({manifest: 'assets/sprite-textures-manifest.json'});
+    await Assets.init({manifest: '/assets/sprite-textures-manifest.json'});
     const tileTextures = await Assets.loadBundle('tiles');
 
     gridCells().map(row => {
@@ -240,6 +242,22 @@ export default function GridMapSquarePixi(): JSXElement {
     playerSprite.y = (player?.y || -1) * playerSpeed.px;
 
     container.addChild(playerSprite);
+
+    const dustTextures = await Assets.loadBundle('dust');
+    const dustSprite = new AnimatedSprite([
+      dustTextures['frame_00'],
+      dustTextures['frame_01'],
+      dustTextures['frame_02'],
+      dustTextures['frame_03'],
+    ], true);
+    dustSprite.animationSpeed = 4/20;
+    dustSprite.width = cellWidth;
+    dustSprite.height = cellWidth;
+    dustSprite.x = (player?.x || -1) * playerSpeed.px;
+    dustSprite.y = (player?.y || -1) * playerSpeed.px - playerSpeed.px * 0.15;
+    dustSprite.alpha = 0;
+
+    container.addChild(dustSprite);
 
     const critterUIUpdater = (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite) {
@@ -533,6 +551,16 @@ export default function GridMapSquarePixi(): JSXElement {
       playerSprite.play();
       playerSprite.x = player.x * playerSpeed.px;
       playerSprite.y = player.y * playerSpeed.px;
+
+      dustSprite.x = player.x * playerSpeed.px;
+      dustSprite.y = player.y * playerSpeed.px - playerSpeed.px * 0.15;
+      if (ms.action === 'running' && playerSpeed.ms <= 180) {
+        dustSprite.play();
+        dustSprite.alpha = 0.35;
+      } else {
+        dustSprite.stop();
+        dustSprite.alpha = 0;
+      }
 
       // Animate player visibility area/lights
       playerCoordObservers.forEach(co => {

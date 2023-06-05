@@ -10,7 +10,7 @@ export interface Speed {
   ms: number;
 }
 export const DEFAULT_SPEED: Speed = {
-  px: 20,
+  px: 20, // Should be equal to the width of a grid cell.
   ms: 300, // Lower is faster.
 };
 
