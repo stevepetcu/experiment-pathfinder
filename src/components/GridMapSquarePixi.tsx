@@ -22,6 +22,7 @@ import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../model
 import {generateCorridors, generateRandomPosition, generateRooms} from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
+import delay from '../utils/Delay';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
@@ -128,7 +129,7 @@ export default function GridMapSquarePixi(): JSXElement {
     const smokeAndMirrorsLoading = async () => {
       const randomWaitTime = randomInt(50, 331);
       const randomProgress = randomInt(1, 4);
-      await new Promise(resolve => setTimeout(resolve, randomWaitTime));
+      await delay(randomWaitTime);
       if (!finishedLoading() && loadingProgress() < 96) {
         setLoadingProgress(lp => lp + randomProgress);
         smokeAndMirrorsLoading();
@@ -249,13 +250,16 @@ export default function GridMapSquarePixi(): JSXElement {
       dustTextures['frame_01'],
       dustTextures['frame_02'],
       dustTextures['frame_03'],
+      Texture.EMPTY,
     ], true);
-    dustSprite.animationSpeed = 4/20;
+    dustSprite.animationSpeed = 5/10;
+    dustSprite.loop = false;
     dustSprite.width = cellWidth;
     dustSprite.height = cellWidth;
     dustSprite.x = (player?.x || -1) * playerSpeed.px;
     dustSprite.y = (player?.y || -1) * playerSpeed.px - playerSpeed.px * 0.15;
-    dustSprite.alpha = 0;
+    dustSprite.gotoAndStop(4);
+    dustSprite.alpha = 0.35;
 
     container.addChild(dustSprite);
 
@@ -323,7 +327,6 @@ export default function GridMapSquarePixi(): JSXElement {
           }
 
           playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
-          console.log('Player speed: ', playerSpeed.ms);
           light.scale.set(sightBoost, sightBoost);
           light2.scale.set(sightBoost, sightBoost);
           light3.scale.set(sightBoost, sightBoost);
@@ -399,7 +402,6 @@ export default function GridMapSquarePixi(): JSXElement {
             }
 
             playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
-            console.log('Player speed: ', playerSpeed.ms);
             light.scale.set(sightBoost, sightBoost);
             light2.scale.set(sightBoost, sightBoost);
             light3.scale.set(sightBoost, sightBoost);
@@ -426,8 +428,7 @@ export default function GridMapSquarePixi(): JSXElement {
       await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
 
       // Wait 2 seconds after reaching the destination.
-      // TODO: extract as a "delay" fn.
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await delay(2000);
       await critterBehaviour(critter);
     };
 
@@ -555,11 +556,7 @@ export default function GridMapSquarePixi(): JSXElement {
       dustSprite.x = player.x * playerSpeed.px;
       dustSprite.y = player.y * playerSpeed.px - playerSpeed.px * 0.15;
       if (ms.action === 'running' && playerSpeed.ms <= 180) {
-        dustSprite.play();
-        dustSprite.alpha = 0.35;
-      } else {
-        dustSprite.stop();
-        dustSprite.alpha = 0;
+        dustSprite.gotoAndPlay(0);
       }
 
       // Animate player visibility area/lights
@@ -575,7 +572,7 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
         if (distanceToPlayer >= spotLightRadius) {
-          canOfMilkSprite.alpha = 1;
+          canOfMilkSprite.alpha = 0;
         }
         if (distanceToPlayer < spotLightRadius) {
           canOfMilkSprite.alpha = 0.35;
@@ -593,7 +590,6 @@ export default function GridMapSquarePixi(): JSXElement {
           }
 
           playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
-          console.log('Player speed: ', playerSpeed.ms);
 
           setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
           // setPb(playerBuffs);

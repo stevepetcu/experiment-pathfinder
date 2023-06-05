@@ -1,5 +1,6 @@
 import {UUID} from 'crypto';
 
+import delay from '../utils/Delay';
 import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {Coords} from './Coords';
 import {Pathfinder} from './Pathfinder';
@@ -111,7 +112,7 @@ export const getPlayer = (pathfinder: Pathfinder, startingCoords: Coords,
   };
 
   const takePath = async (path: GridCell[], isNewPath: boolean, speed: Speed): Promise<void> => {
-    await new Promise(resolve => setTimeout(resolve, speed.ms));
+    await delay(speed.ms);
 
     if (isNewPath) {
       _this.isChangingDirection = false;
