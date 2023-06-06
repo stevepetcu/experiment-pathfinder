@@ -70,8 +70,8 @@ export default function GridMapSquarePixi(): JSXElement {
   const numberOfCritters = 5;
   const baseSpotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
   let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
-  const baseRunningFps = 7/20;
-  const baseLookingAroundFps = 5/250;
+  const baseRunningFps = 7 / 20;
+  const baseLookingAroundFps = 5 / 250;
   // End "These settings are not user-configurable"
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
@@ -272,7 +272,7 @@ export default function GridMapSquarePixi(): JSXElement {
       dustTextures['frame_03'],
       Texture.EMPTY,
     ], true);
-    dustSprite.animationSpeed = 5/10;
+    dustSprite.animationSpeed = 5 / 10;
     dustSprite.loop = false;
     dustSprite.width = cellWidth;
     dustSprite.height = cellWidth;
@@ -548,10 +548,10 @@ export default function GridMapSquarePixi(): JSXElement {
     const buffTextures = await Assets.loadBundle('buffs');
     const randomMilkCanCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
     const canOfMilkSprite = new Sprite(buffTextures['milk']);
-    canOfMilkSprite.width = cellWidth/2;
-    canOfMilkSprite.height = cellWidth/2;
-    canOfMilkSprite.x = randomMilkCanCoords.x * cellWidth + cellWidth/4;
-    canOfMilkSprite.y = randomMilkCanCoords.y * cellWidth + cellWidth/4;
+    canOfMilkSprite.width = cellWidth / 2;
+    canOfMilkSprite.height = cellWidth / 2;
+    canOfMilkSprite.x = randomMilkCanCoords.x * cellWidth + cellWidth / 4;
+    canOfMilkSprite.y = randomMilkCanCoords.y * cellWidth + cellWidth / 4;
     canOfMilkSprite.alpha = 0;
 
     container.addChild(canOfMilkSprite);
@@ -622,7 +622,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       // Animate player sprite
       const ms = playerInstance.movementState;
-      const runningFpsDivider = baseRunningFps/(1 + numberOfCrittersEaten()/30);
+      const runningFpsDivider = baseRunningFps / (1 + numberOfCrittersEaten() / 30);
       const fps = ms.action === 'running' ? runningFpsDivider : baseLookingAroundFps; // has to be a multiple of the number of textures.
       playerSprite.textures = characterTextures[ms.action][ms.direction];
       playerSprite.animationSpeed = fps;
@@ -785,30 +785,28 @@ export default function GridMapSquarePixi(): JSXElement {
             (!finishedLoading() || !isGameStarted()) &&
             <div onClick={() => startGame()}
               class={'bg-slate-800 h-full w-full ' +
-              'grid grid-cols-1 gap-8 content-center z-30 '}
+                   'grid grid-cols-1 gap-8 content-center z-30 '}
               classList={{
                 'cursor-wait': !finishedLoading(),
                 'cursor-pointer': finishedLoading(),
               }}
             >
-              {
-                !finishedLoading() &&
-                <>
-                  <p class={'text-2xl sm:text-3xl md:text-5xl font-bold ' +
-                  'leading-none text-white antialiased'}>Loading…</p>
-                  <p class={'text-xl sm:text-2xl md:text-4xl ' +
-                'leading-none text-white antialiased'}>{loadingProgress()}%</p>
-                </>
-              }
-              {
-                finishedLoading() &&
-                <>
-                  <p class={'text-3xl sm:text-4xl md:text-6xl ' +
-                  'leading-none text-white antialiased'}>Eat all the fish and survive</p>
-                  <p class={'text-2xl sm:text-3xl md:text-4xl ' +
-                  'leading-none text-white antialiased'}>Click anywhere to start</p>
-                </>
-              }
+              <p class={'text-3xl sm:text-4xl md:text-6xl leading-none text-slate-400 antialiased'}
+                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                Eat all the fish.
+              </p>
+              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
+                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                Don't linger. There are other hungry things besides you.
+              </p>
+              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-white antialiased'}>
+                {
+                  !finishedLoading() && `Loading ${loadingProgress()}%`
+                }
+                {
+                  finishedLoading() && 'Click anywhere to start'
+                }
+              </p>
             </div>
           }
           {
