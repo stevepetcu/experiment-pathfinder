@@ -17,7 +17,7 @@ export interface PathfinderCell {
   parent: PathfinderCell | null;
   isAccessible: () => boolean;
   reset: () => void;
-  getNeighbourCoordinates: () => (Coords & { cost: number })[];
+  getNeighbourCoordinates: () => {corners: (Coords & { cost: number })[], sides: (Coords & { cost: number })[]};
 }
 
 const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell => {
@@ -32,57 +32,62 @@ const getPathfinderCell = (gridCell: GridCell, weight: number): PathfinderCell =
     _this.parent = null;
   };
 
-  const getNeighbourCoordinates = (): (Coords & { cost: number })[] => {
-    return [
-      {
-        // bottom left
-        x: _this.gridCell.x - 1,
-        y: _this.gridCell.y + 1,
-        cost: _this.weight * Math.sqrt(2), // Diagonal distance for one block, sqrt(a^2 + b^2), a == b == 1.
-      },
-      {
-        // bottom right
-        x: _this.gridCell.x + 1,
-        y: _this.gridCell.y + 1,
-        cost: _this.weight * Math.sqrt(2),
-      },
-      {
-        // top right
-        x: _this.gridCell.x + 1,
-        y: _this.gridCell.y - 1,
-        cost: _this.weight * Math.sqrt(2),
-      },
-      {
-        // top left
-        x: _this.gridCell.x - 1,
-        y: _this.gridCell.y - 1,
-        cost: _this.weight * Math.sqrt(2),
-      },
-      {
-        // bottom
-        x: _this.gridCell.x,
-        y: _this.gridCell.y + 1,
-        cost: _this.weight,
-      },
-      {
-        // right
-        x: _this.gridCell.x + 1,
-        y: _this.gridCell.y,
-        cost: _this.weight,
-      },
-      {
-        // top
-        x: _this.gridCell.x,
-        y: _this.gridCell.y - 1,
-        cost: _this.weight,
-      },
-      {
-        // left
-        x: _this.gridCell.x - 1,
-        y: _this.gridCell.y,
-        cost: _this.weight,
-      },
-    ];
+  const getNeighbourCoordinates = ():
+    {corners: (Coords & { cost: number })[], sides: (Coords & { cost: number })[]} => {
+    return {
+      corners: [
+        {
+          // bottom left
+          x: _this.gridCell.x - 1,
+          y: _this.gridCell.y + 1,
+          cost: _this.weight * Math.sqrt(2), // Diagonal distance for one block, sqrt(a^2 + b^2), a == b == 1.
+        },
+        {
+          // bottom right
+          x: _this.gridCell.x + 1,
+          y: _this.gridCell.y + 1,
+          cost: _this.weight * Math.sqrt(2),
+        },
+        {
+          // top right
+          x: _this.gridCell.x + 1,
+          y: _this.gridCell.y - 1,
+          cost: _this.weight * Math.sqrt(2),
+        },
+        {
+          // top left
+          x: _this.gridCell.x - 1,
+          y: _this.gridCell.y - 1,
+          cost: _this.weight * Math.sqrt(2),
+        },
+      ],
+      sides: [
+        {
+          // bottom
+          x: _this.gridCell.x,
+          y: _this.gridCell.y + 1,
+          cost: _this.weight,
+        },
+        {
+          // right
+          x: _this.gridCell.x + 1,
+          y: _this.gridCell.y,
+          cost: _this.weight,
+        },
+        {
+          // top
+          x: _this.gridCell.x,
+          y: _this.gridCell.y - 1,
+          cost: _this.weight,
+        },
+        {
+          // left
+          x: _this.gridCell.x - 1,
+          y: _this.gridCell.y,
+          cost: _this.weight,
+        },
+      ],
+    };
   };
 
   const _this = {
@@ -116,9 +121,9 @@ export interface Pathfinder {
 
 export const getPathfinder = (
   grid: Grid,
-  options = {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true},
+  options?: {allowDiagonalMovement?: boolean, returnClosestCellOnPathFailure?: boolean},
 ): Pathfinder => {
-
+  const pfOptions = {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true, ...options};
 
   const scoreFn = (element: PathfinderCell) => element.f;
 
@@ -145,8 +150,11 @@ export const getPathfinder = (
 
   const getNeighbours = (cell: PathfinderCell): { cell: PathfinderCell, cost: number }[] => {
     const neighbourCoords = cell.getNeighbourCoordinates();
+    const neighbourCoordsForHeuristic = _this.options.allowDiagonalMovement ?
+      neighbourCoords.corners.concat(neighbourCoords.sides) :
+      neighbourCoords.sides;
     const neighbours: { cell: PathfinderCell, cost: number }[] = [];
-    neighbourCoords.map(nc => {
+    neighbourCoordsForHeuristic.map(nc => {
       if (_this.cells[nc.y][nc.x].isAccessible()) {
         neighbours.push({
           cell: _this.cells[nc.y][nc.x],
@@ -173,7 +181,7 @@ export const getPathfinder = (
   const tracePath = (from: GridCell, to: GridCell): GridCell[] => {
     reset();
 
-    const heuristic = options.allowDiagonalMovement ? calcDiagonalDistance : calcManhattanDistance;
+    const heuristic = pfOptions.allowDiagonalMovement ? calcDiagonalDistance : calcManhattanDistance;
     const start: PathfinderCell = _this.cells[from.y][from.x];
     const end: PathfinderCell = _this.cells[to.y][to.x];
 
@@ -220,7 +228,7 @@ export const getPathfinder = (
           neighbour.cell.f = neighbour.cell.g + neighbour.cell.h;
           addDirtyCell(neighbour.cell);
 
-          if (options.returnClosestCellOnPathFailure) {
+          if (pfOptions.returnClosestCellOnPathFailure) {
             // If the neighbour is closer than the current closestCell or if it's equally close but has
             // a cheaper path than the current closest node, then it becomes the closest node.
             if (
@@ -243,7 +251,7 @@ export const getPathfinder = (
     }
 
     // No result was found - empty array signifies failure to find path.
-    return options.returnClosestCellOnPathFailure ? pathTo(closestCell) : [];
+    return pfOptions.returnClosestCellOnPathFailure ? pathTo(closestCell) : [];
   };
 
   const _this = {
@@ -253,7 +261,7 @@ export const getPathfinder = (
     tracePath,
     reset,
     getGridCellAt,
-    options,
+    options: pfOptions,
   };
 
   return _this;

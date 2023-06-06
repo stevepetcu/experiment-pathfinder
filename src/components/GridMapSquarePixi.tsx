@@ -79,7 +79,7 @@ export default function GridMapSquarePixi(): JSXElement {
   const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
 
-  const critterSpeed: Speed = {ms: 500, px: cellWidth};
+  const critterSpeed: Speed = {ms: 245, px: cellWidth};
 
   const baseGhostSpeed = {ms: 150, px: cellWidth};
   const ghostSpeed = {...baseGhostSpeed};
@@ -457,7 +457,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     for (let i = 0; i < numberOfCritters; i++) {
       const randomCritterStartingCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
-      const critterPathFinder = getPathfinder(generatedGrid);
+      const critterPathFinder = getPathfinder(generatedGrid, {allowDiagonalMovement: false});
       const critter = getCharacter(
         critterPathFinder,
         randomCritterStartingCoords,
@@ -501,6 +501,7 @@ export default function GridMapSquarePixi(): JSXElement {
       }
 
       // TODO: If the player meets the ghost, do things.
+      //  Make ghost invisible outside of the player's sight radius
     };
 
     ghostBehaviour = async (ghost: Character, playerInstance: Character, ghostSpawnTimeInMs: number) => {
@@ -528,6 +529,7 @@ export default function GridMapSquarePixi(): JSXElement {
       //  Set a timeout before the ghost starts moving. The timeout should become smaller every 10 seconds.
       //  Set ghost move target and get it moving.
       //  Set a speed for the ghost (significantly higher than the player's speed)
+      //  Make ghost invisible outside of the player's sight radius
       await ghostBehaviour(ghost, playerInstance, Math.max(ghostSpawnTimeInMs - 500, 1000));
     };
 
