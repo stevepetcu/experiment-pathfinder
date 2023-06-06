@@ -39,6 +39,17 @@ export const generateRandomCoordsInSpecificRoom = (room: Room, avoidPoint?: Coor
   return {x, y};
 };
 
+export const generateRandomCoordsInSpecificCorridor = (corridor: Corridor, avoidPoint?: Coords): Coords => {
+  const x = randomInt(corridor.startCoords.x, corridor.endCoords.x + 1); // randomInt max is exclusive
+  const y = randomInt(corridor.startCoords.y, corridor.endCoords.y + 1); // randomInt max is exclusive
+
+  if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
+    return generateRandomCoordsInSpecificCorridor(corridor, avoidPoint);
+  }
+
+  return {x, y};
+};
+
 export const generateRooms = async (
   mapWidth: number,
   minRoomWidth: number,

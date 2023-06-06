@@ -21,7 +21,7 @@ import {Character, DEFAULT_SPEED, getCharacter, Speed} from '../models/Character
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {
   generateCorridors,
-  generateRandomCoordsInRandomRoom,
+  generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificCorridor,
   generateRandomCoordsInSpecificRoom,
   generateRooms,
 } from '../models/Map';
@@ -508,16 +508,25 @@ export default function GridMapSquarePixi(): JSXElement {
       console.log(ghostSpawnTimeInMs);
       await delay(ghostSpawnTimeInMs);
       const playerCell = ghost.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
+
+      let randomGhostSpawningCoords;
+      let playerCorridor;
       const playerRoom = generatedRooms.find(room => room.roomDto.id === playerCell.roomId);
 
-      if (!playerRoom) {
-        return; // Don't generate ghosts in corridors.
+      if (playerRoom) {
+        randomGhostSpawningCoords = generateRandomCoordsInSpecificRoom(
+          playerRoom,
+          {x: playerInstance.x, y: playerInstance.y},
+        );
+      } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
+        playerCorridor = generatedCorridors.find(corridor => corridor.id === playerCell.roomId);
+        if (!playerCorridor) { // continue
+          await ghostBehaviour(ghost, playerInstance, ghostSpawnTimeInMs);
+        }
+        randomGhostSpawningCoords = generateRandomCoordsInSpecificCorridor(
+          playerCorridor!, {x: playerInstance.x, y: playerInstance.y},
+        );
       }
-
-      const randomGhostSpawningCoords = generateRandomCoordsInSpecificRoom(
-        playerRoom,
-        {x: playerInstance.x, y: playerInstance.y},
-      );
 
       ghost.x = randomGhostSpawningCoords.x;
       ghost.y = randomGhostSpawningCoords.y;
