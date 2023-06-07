@@ -79,9 +79,9 @@ export default function GridMapSquarePixi(): JSXElement {
   const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
 
-  const critterSpeed: Speed = {ms: 245, px: cellWidth};
+  const critterSpeed: Speed = {ms: 150, px: cellWidth};
 
-  const baseGhostSpeed = {ms: 150, px: cellWidth};
+  const baseGhostSpeed = {ms: 120, px: cellWidth};
   const ghostSpeed = {...baseGhostSpeed};
 
   // TODO do I need signals here?
@@ -115,19 +115,18 @@ export default function GridMapSquarePixi(): JSXElement {
   const playerCoordObservers: Graphics[] = [];
 
   const critters: Character[] = [];
-  const critterSprites: { id: UUID, sprite: Sprite }[] = [];
+  const critterSprites: { id: UUID, sprite: Sprite }[] = []; // TODO: replace with animated sprites
   const crittersEaten: Character['id'][] = [];
   let critterBehaviour: (critter: Character, playerInstance: Character) => void;
-  let ghostBehaviour: (ghost: Character, playerInstance: Character, ghostSpawnTimeInMs: number) => void;
 
-  let ghost: Character;
-  const initialGhostSpawnTime = 3000; // TODO: set to 15000 or 20000 initially
-  // let ghostSprite: AnimatedSprite;
-  const ghostTexture = Texture.WHITE;
-  const ghostSprite = new Sprite(ghostTexture);
-  ghostSprite.width = cellWidth / 2;
-  ghostSprite.height = cellWidth / 2;
-  ghostSprite.tint = 'green';
+  const ghosts: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite }[] = [];
+  const numberOfGhosts = 2;
+  const initialGhostMsWaitUntilSpawn = {base: 5000, jitter: 5000}; // TODO: increase these numbers.
+  const subsequentGhostMsWaitUntilSpawn = {base: 5000, jitter: 500}; // TODO: increase these numbers.
+  let ghostBehaviour: (
+    ghost: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite }, // TODO: replace with animated sprites
+    playerInstance: Character
+  ) => void;
 
   const playerBuffs: CharacterBuff[] = [];
   // const [pb, setPb] = createSignal<CharacterBuff[]>([]); // TODO figure out why this doesn't update.
@@ -283,6 +282,8 @@ export default function GridMapSquarePixi(): JSXElement {
 
     container.addChild(dustSprite);
 
+    // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
+    // Critter stuff
     const critterUIUpdater = (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite) {
         return;
@@ -436,25 +437,6 @@ export default function GridMapSquarePixi(): JSXElement {
       }
     };
 
-    // Generate critters
-    // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
-    critterBehaviour = async (critter: Character, playerInstance: Character) => {
-      if (!critter.isAlive) {
-        return;
-      }
-
-      const randomLocation = generateRandomCoordsInRandomRoom(
-        generatedRooms,
-        {x: playerInstance.x, y: playerInstance.y},
-      );
-
-      await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
-
-      // Wait 2 seconds after reaching the destination.
-      await delay(2000);
-      await critterBehaviour(critter, playerInstance);
-    };
-
     for (let i = 0; i < numberOfCritters; i++) {
       const randomCritterStartingCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
       const critterPathFinder = getPathfinder(generatedGrid, {allowDiagonalMovement: false});
@@ -488,13 +470,35 @@ export default function GridMapSquarePixi(): JSXElement {
       critterSSMB
         .addSubscriber({subscriptionId: critter.id, callback: critterUIUpdater});
     }
-    // End "Generate critters"
+
+    critterBehaviour = async (critter: Character, playerInstance: Character) => {
+      if (!critter.isAlive) {
+        return;
+      }
+
+      const randomLocation = generateRandomCoordsInRandomRoom(
+        generatedRooms,
+        {x: playerInstance.x, y: playerInstance.y},
+      );
+
+      await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
+
+      // Wait 2 seconds after reaching the destination.
+      await delay(2000);
+      await critterBehaviour(critter, playerInstance);
+    };
+    // End "Critter stuff"
 
     // Ghosts stuff
-    container.addChild(ghostSprite); // TODO: replace with animated ghost sprite.
+    const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
+      if (!ghost.isAlive) {
+        return;
+      }
 
-    const ghostPathfinder = getPathfinder(generatedGrid);
-    ghost = getCharacter(ghostPathfinder, {x: -1, y: -1}, ghostSSMB);
+      // TODO: update ghost sprite when the ghost moves.
+      //  If the ghost meets the player, do things.
+    };
+
     const playerUpdaterForGhosts = async (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerInstance.isAlive) {
         return;
@@ -504,10 +508,38 @@ export default function GridMapSquarePixi(): JSXElement {
       //  Make ghost invisible outside of the player's sight radius
     };
 
-    ghostBehaviour = async (ghost: Character, playerInstance: Character, ghostSpawnTimeInMs: number) => {
-      console.log(ghostSpawnTimeInMs);
-      await delay(ghostSpawnTimeInMs);
-      const playerCell = ghost.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
+    for (let i = 0; i < numberOfGhosts; i++) {
+      const ghostPathfinder = getPathfinder(generatedGrid);
+      const ghost = getCharacter(ghostPathfinder, {x: -1, y: -1}, ghostSSMB);
+
+      const ghostTexture = Texture.WHITE;
+      const sprite = new Sprite(ghostTexture);
+      sprite.tint = i === 0 ? 'green' : 'purple';
+      sprite.width = cellWidth / 2;
+      sprite.height = cellWidth / 2;
+      sprite.alpha = 1; // TODO: make 0.
+
+      ghosts.push({
+        ghost,
+        msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
+        sprite,
+      });
+
+      container.addChild(sprite); // TODO: replace with animated ghost sprite.
+
+      ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUiUpdater});
+    }
+
+    ghostBehaviour = async (
+      ghost: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite },
+      playerInstance: Character,
+    ) => {
+      const ghostInstance = ghost.ghost;
+      const ghostSpawnWait = ghost.msWaitUntilSpawn;
+      const ghostSprite = ghost.sprite;
+
+      await delay(ghostSpawnWait);
+      const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
 
       let randomGhostSpawningCoords;
       let playerCorridor;
@@ -520,39 +552,56 @@ export default function GridMapSquarePixi(): JSXElement {
         );
       } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
         playerCorridor = generatedCorridors.find(corridor => corridor.id === playerCell.roomId);
-        if (!playerCorridor) { // continue
-          await ghostBehaviour(ghost, playerInstance, ghostSpawnTimeInMs);
+        if (!playerCorridor || playerCorridor.length() < 3) { // continue
+          await ghostBehaviour(ghost, playerInstance);
         }
         randomGhostSpawningCoords = generateRandomCoordsInSpecificCorridor(
           playerCorridor!, {x: playerInstance.x, y: playerInstance.y},
         );
       }
 
-      ghost.x = randomGhostSpawningCoords.x;
-      ghost.y = randomGhostSpawningCoords.y;
+      ghostInstance.x = randomGhostSpawningCoords.x;
+      ghostInstance.y = randomGhostSpawningCoords.y;
 
-      ghostSprite.x = ghost.x * ghostSpeed.px + cellWidth / 4;
-      ghostSprite.y = ghost.y * ghostSpeed.px + cellWidth / 4;
+      ghostSprite.x = ghostInstance.x * ghostSpeed.px + cellWidth / 4;
+      ghostSprite.y = ghostInstance.y * ghostSpeed.px + cellWidth / 4;
+
+      //TODO:
+      // const distanceToPlayer = …
+      // Make ghost visible only if the distance to the player is small enough.
+
+      // TODO: play ghost appears animation without looping if the distance to the player is small enough
+      //  Otherwise simply jump to the relevant frame.
+      await delay(1000);
+
+      //TODO:
+      // const ghostTarget = … calc based on distance to player && playerInstance.movementState.vectorX / vectorY
+
+      // TODO: play ghost moves animation without looping.
+
 
       // TODO:
-      //  Set a timeout before the ghost starts moving. The timeout should become smaller every 10 seconds.
-      //  Set ghost move target and get it moving.
       //  Set a speed for the ghost (significantly higher than the player's speed)
       //  Make ghost invisible outside of the player's sight radius
-      await ghostBehaviour(ghost, playerInstance, Math.max(ghostSpawnTimeInMs - 500, 1000));
+
+      // TODO: add a speed parameter to this fn.
+      const newGhostSpawnWait = randomInt(
+        subsequentGhostMsWaitUntilSpawn.base,
+        subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
+      );
+
+      subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base - 500, 2000);
+      subsequentGhostMsWaitUntilSpawn.jitter *= 0.9;
+
+      await ghostBehaviour(
+        {
+          ghost: ghostInstance,
+          msWaitUntilSpawn: newGhostSpawnWait,
+          sprite: ghostSprite,
+        },
+        playerInstance,
+      );
     };
-
-    const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!ghost.isAlive) {
-        return;
-      }
-
-      // TODO: update ghost sprite when the ghost moves.
-      //  If the ghost meets the player, do things.
-    };
-
-    ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUiUpdater});
-
     // End "Ghosts stuff"
 
     // Add can of milk
@@ -716,7 +765,9 @@ export default function GridMapSquarePixi(): JSXElement {
       critterBehaviour(critter, player);
     }
 
-    ghostBehaviour(ghost, player, initialGhostSpawnTime);
+    for (const ghost of ghosts) {
+      ghostBehaviour(ghost, player);
+    }
 
     setIsGameStarted(true);
     playTimeTracker = setInterval(() => {

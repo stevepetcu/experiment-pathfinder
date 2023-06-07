@@ -12,39 +12,80 @@ const LEVEL_TWO_ITERATION_COUNT_THRESHOLD = LEVEL_ONE_ITERATION_COUNT_THRESHOLD 
 const MAGIC_TO_REPLACE_LATER = 333;
 const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
 
+const MAX_RETRIES_ALLOWED_TO_GENERATE_RANDOM_POINTS = 5;
+
 // TODO: update the signature and add an array of positions to avoid;
 //  This will help us… avoid stacking critters or buffs on top of the player.
 //  Add another method that generates a random position inside a specific room. Refactor.
-export const generateRandomCoordsInRandomRoom = (rooms: Room[], avoidPoint?: Coords): Coords => {
+export const generateRandomCoordsInRandomRoom = (
+  rooms: Room[],
+  avoidPoint?: Coords,
+  numberOfTries?: number,
+): Coords => {
+  let tries = numberOfTries ?? 0;
+  if (tries === MAX_RETRIES_ALLOWED_TO_GENERATE_RANDOM_POINTS) {
+    return {
+      x: -1,
+      y: -1,
+    };
+  }
+
   const randomRoom = rooms[randomInt(0, rooms.length)];
 
   const x = randomInt(randomRoom.leftX(), randomRoom.rightX() + 1); // randomInt max is exclusive
   const y = randomInt(randomRoom.topY(), randomRoom.bottomY() + 1); // randomInt max is exclusive
 
   if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
+    tries++;
     return generateRandomCoordsInRandomRoom(rooms, avoidPoint);
   }
 
   return {x, y};
 };
 
-export const generateRandomCoordsInSpecificRoom = (room: Room, avoidPoint?: Coords): Coords => {
+export const generateRandomCoordsInSpecificRoom = (
+  room: Room,
+  avoidPoint?: Coords,
+  numberOfTries?: number,
+): Coords => {
+  let tries = numberOfTries ?? 0;
+  if (tries === MAX_RETRIES_ALLOWED_TO_GENERATE_RANDOM_POINTS) {
+    return {
+      x: -1,
+      y: -1,
+    };
+  }
+
   const x = randomInt(room.leftX(), room.rightX() + 1); // randomInt max is exclusive
   const y = randomInt(room.topY(), room.bottomY() + 1); // randomInt max is exclusive
 
   if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
+    tries++;
     return generateRandomCoordsInSpecificRoom(room, avoidPoint);
   }
 
   return {x, y};
 };
 
-export const generateRandomCoordsInSpecificCorridor = (corridor: Corridor, avoidPoint?: Coords): Coords => {
+export const generateRandomCoordsInSpecificCorridor = (
+  corridor: Corridor,
+  avoidPoint?: Coords,
+  numberOfTries?: number,
+): Coords => {
+  let tries = numberOfTries ?? 0;
+  if (tries === MAX_RETRIES_ALLOWED_TO_GENERATE_RANDOM_POINTS) {
+    return {
+      x: -1,
+      y: -1,
+    };
+  }
+
   const x = randomInt(corridor.startCoords.x, corridor.endCoords.x + 1); // randomInt max is exclusive
   const y = randomInt(corridor.startCoords.y, corridor.endCoords.y + 1); // randomInt max is exclusive
 
   if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
-    return generateRandomCoordsInSpecificCorridor(corridor, avoidPoint);
+    tries++;
+    return generateRandomCoordsInSpecificCorridor(corridor, avoidPoint, tries);
   }
 
   return {x, y};
