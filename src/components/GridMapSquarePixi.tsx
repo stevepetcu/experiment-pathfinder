@@ -19,6 +19,7 @@ import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 import charTextures from '../assets/CharTextures';
 import {Character, DEFAULT_SPEED, getCharacter, Speed} from '../models/Character';
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
+import {Coords} from '../models/Coords';
 import {
   generateCorridors,
   generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificCorridor,
@@ -78,11 +79,8 @@ export default function GridMapSquarePixi(): JSXElement {
   //  Just pick one of them, since they must always be equal.
   const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
-
   const critterSpeed: Speed = {ms: 150, px: cellWidth};
-
-  const baseGhostSpeed = {ms: 120, px: cellWidth};
-  const ghostSpeed = {...baseGhostSpeed};
+  const ghostSpeed = {ms: 120, px: cellWidth};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -119,13 +117,14 @@ export default function GridMapSquarePixi(): JSXElement {
   const crittersEaten: Character['id'][] = [];
   let critterBehaviour: (critter: Character, playerInstance: Character) => void;
 
-  const ghosts: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite }[] = [];
+  const ghosts: { instance: Character, sprite: Sprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
   const numberOfGhosts = 2;
   const initialGhostMsWaitUntilSpawn = {base: 5000, jitter: 5000}; // TODO: increase these numbers.
   const subsequentGhostMsWaitUntilSpawn = {base: 5000, jitter: 500}; // TODO: increase these numbers.
   let ghostBehaviour: (
-    ghost: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite }, // TODO: replace with animated sprites
-    playerInstance: Character
+    ghost: { instance: Character, sprite: Sprite, msWaitUntilSpawn: number, speed: Speed }, // TODO: replace with animated sprites
+    player: { instance: Character, sprite: Sprite },
+    critters: Character[]
   ) => void;
 
   const playerBuffs: CharacterBuff[] = [];
@@ -297,7 +296,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       if (!critterInstance.isAlive) {
         // critterSprite.sprite.tint = 'grey';
-        critterSprite.sprite.alpha = 0; // TODO: change to "dead" texture?
+        critterSprite.sprite.alpha = 0;
         ssmb.removeSubscriber(critterInstance.id);
         return;
       }
@@ -366,7 +365,7 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      for (let i = 0; i < critters.length; i++) {
+      for (let i = 0; i < critters.length; i++) { // TODO: simply find the critterSprites directly (that are not destroyed)?
         const critterInstance = critters[i];
 
         if (!critterInstance || !critterInstance.isAlive) {
@@ -491,17 +490,64 @@ export default function GridMapSquarePixi(): JSXElement {
 
     // Ghosts stuff
     const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!ghost.isAlive) {
+      const ghostInstance = ghosts.find(g => g.instance.id === ghost.id);
+
+      if (!ghostInstance) {
         return;
       }
 
-      // TODO: update ghost sprite when the ghost moves.
-      //  If the ghost meets the player, do things.
+      const ghostSprite = ghostInstance.sprite;
+
+      // Animate ghost sprite
+      ghostSprite.x = ghost.x * ghostSpeed.px + cellWidth / 4;
+      ghostSprite.y = ghost.y * ghostSpeed.px + cellWidth / 4;
+
+      const distanceToPlayer = calcDiagonalDistance(
+        {x: ghostSprite.x, y: ghostSprite.y},
+        {x: playerSprite.x, y: playerSprite.y},
+      );
+
+      if (distanceToPlayer >= spotLightRadius) {
+        ghostSprite.alpha = 0;
+      }
+      if (distanceToPlayer < spotLightRadius) {
+        ghostSprite.alpha = 0.35;
+      }
+      if (distanceToPlayer < spotLightRadius * 0.7) {
+        ghostSprite.alpha = 1;
+      }
+      if (distanceToPlayer < spotLightRadius * 0.1 && ghostInstance.instance.isAlive) {
+        console.log(`Ghost ${ghostInstance.instance.id} caught the player!`);
+        // TODO: If the ghost meets the player, do things.
+      }
     };
 
     const playerUpdaterForGhosts = async (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerInstance.isAlive) {
         return;
+      }
+
+      for (const ghost of ghosts) {
+        const ghostSprite = ghost.sprite;
+
+        const distanceToPlayer = calcDiagonalDistance(
+          {x: ghostSprite.x, y: ghostSprite.y},
+          {x: playerInstance.x * cellWidth, y: playerInstance.y * cellWidth},
+        );
+
+        if (distanceToPlayer >= spotLightRadius) {
+          ghostSprite.alpha = 0;
+        }
+        if (distanceToPlayer < spotLightRadius) {
+          ghostSprite.alpha = 0.35;
+        }
+        if (distanceToPlayer < spotLightRadius * 0.7) {
+          ghostSprite.alpha = 1;
+        }
+        if (distanceToPlayer < spotLightRadius * 0.1 && ghost.instance.isAlive) {
+          console.log(`Ghost ${ghost.instance.id} caught the player!`);
+          // TODO: If the ghost meets the player, do things.
+        }
       }
 
       // TODO: If the player meets the ghost, do things.
@@ -517,12 +563,12 @@ export default function GridMapSquarePixi(): JSXElement {
       sprite.tint = i === 0 ? 'green' : 'purple';
       sprite.width = cellWidth / 2;
       sprite.height = cellWidth / 2;
-      sprite.alpha = 1; // TODO: make 0.
 
       ghosts.push({
-        ghost,
-        msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
+        instance: ghost,
         sprite,
+        msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
+        speed: ghostSpeed,
       });
 
       container.addChild(sprite); // TODO: replace with animated ghost sprite.
@@ -531,12 +577,22 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     ghostBehaviour = async (
-      ghost: { ghost: Character, msWaitUntilSpawn: number, sprite: Sprite },
-      playerInstance: Character,
+      ghost: { instance: Character, msWaitUntilSpawn: number, sprite: Sprite, speed: Speed },
+      player: { instance: Character, sprite: Sprite },
+      critters,
     ) => {
-      const ghostInstance = ghost.ghost;
+      if (!critters.some(critter => critter.isAlive)) {
+        return;
+      }
+
+      const ghostInstance = ghost.instance;
       const ghostSpawnWait = ghost.msWaitUntilSpawn;
       const ghostSprite = ghost.sprite;
+
+      ghostInstance.setIsAlive(false); // we'll use this as: ghost is deadly if it's alive, otherwise it won't harm the player.
+
+      const playerInstance = player.instance;
+      const playerSprite = player.sprite;
 
       await delay(ghostSpawnWait);
       const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
@@ -553,7 +609,7 @@ export default function GridMapSquarePixi(): JSXElement {
       } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
         playerCorridor = generatedCorridors.find(corridor => corridor.id === playerCell.roomId);
         if (!playerCorridor || playerCorridor.length() < 3) { // continue
-          await ghostBehaviour(ghost, playerInstance);
+          await ghostBehaviour(ghost, player, critters);
         }
         randomGhostSpawningCoords = generateRandomCoordsInSpecificCorridor(
           playerCorridor!, {x: playerInstance.x, y: playerInstance.y},
@@ -566,40 +622,68 @@ export default function GridMapSquarePixi(): JSXElement {
       ghostSprite.x = ghostInstance.x * ghostSpeed.px + cellWidth / 4;
       ghostSprite.y = ghostInstance.y * ghostSpeed.px + cellWidth / 4;
 
-      //TODO:
-      // const distanceToPlayer = …
-      // Make ghost visible only if the distance to the player is small enough.
+      // TODO:
+      //  1. extract this whole distance/alpha thing as its own thing.
+      //  2. refactor the other places that could use the spite directly, rather than having to recalculate its position.
+      const distanceToPlayer = calcDiagonalDistance(
+        {x: ghostSprite.x, y: ghostSprite.y},
+        {x: playerSprite.x, y: playerSprite.y},
+      );
 
-      // TODO: play ghost appears animation without looping if the distance to the player is small enough
+      if (distanceToPlayer >= spotLightRadius) {
+        ghostSprite.alpha = 0;
+      }
+      if (distanceToPlayer < spotLightRadius) {
+        ghostSprite.alpha = 0.35;
+      }
+      if (distanceToPlayer < spotLightRadius * 0.7) {
+        ghostSprite.alpha = 1;
+      }
+
+      // TODO: play ghost appears animation without looping if the ghost sprite's alpha is > 0.
       //  Otherwise simply jump to the relevant frame.
       await delay(1000);
 
-      //TODO:
-      // const ghostTarget = … calc based on distance to player && playerInstance.movementState.vectorX / vectorY
+      // Try to anticipate the player's movement
+      const ghostTargetCoords: Coords = {
+        x: playerInstance.x + (playerInstance.movementState.action === 'running' ?
+          playerInstance.movementState.vectorX :
+          0),
+        y: playerInstance.y + (playerInstance.movementState.action === 'running' ?
+          playerInstance.movementState.vectorY :
+          0),
+      };
 
+      const ghostTargetCell = ghostInstance.pathfinder.getGridCellAt(ghostTargetCoords.x, ghostTargetCoords.y);
+      ghostInstance.setIsAlive(true);
+      await ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
       // TODO: play ghost moves animation without looping.
 
+      ghostInstance.setIsAlive(false);
+      await delay(1000);
+      ghostSprite.alpha = 0; // TODO: replace this with playing the ghost disappear animation without looping (move it above the delay).
 
-      // TODO:
-      //  Set a speed for the ghost (significantly higher than the player's speed)
-      //  Make ghost invisible outside of the player's sight radius
 
-      // TODO: add a speed parameter to this fn.
       const newGhostSpawnWait = randomInt(
         subsequentGhostMsWaitUntilSpawn.base,
         subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
       );
 
       subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base - 500, 2000);
-      subsequentGhostMsWaitUntilSpawn.jitter *= 0.9;
+      subsequentGhostMsWaitUntilSpawn.jitter - Math.floor(subsequentGhostMsWaitUntilSpawn.jitter * 0.9);
+
+      // TODO: make the ghost slightly faster - probably add a speed param to this function and remove the "base" ghost speed.
+      ghost.speed.ms = Math.floor(ghost.speed.ms * 0.9);
 
       await ghostBehaviour(
         {
-          ghost: ghostInstance,
+          instance: ghostInstance,
           msWaitUntilSpawn: newGhostSpawnWait,
           sprite: ghostSprite,
+          speed: ghost.speed,
         },
-        playerInstance,
+        player,
+        critters,
       );
     };
     // End "Ghosts stuff"
@@ -766,7 +850,7 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     for (const ghost of ghosts) {
-      ghostBehaviour(ghost, player);
+      ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
     }
 
     setIsGameStarted(true);
