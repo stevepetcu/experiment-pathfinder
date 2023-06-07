@@ -14,9 +14,6 @@ const CORRIDOR_REMOVAL_BASE_CHANCE = 10;
 
 const MAX_RETRIES_ALLOWED_TO_GENERATE_RANDOM_POINTS = 5;
 
-// TODO: update the signature and add an array of positions to avoid;
-//  This will help us… avoid stacking critters or buffs on top of the player.
-//  Add another method that generates a random position inside a specific room. Refactor.
 export const generateRandomCoordsInRandomRoom = (
   rooms: Room[],
   avoidPoint?: Coords,
@@ -37,8 +34,92 @@ export const generateRandomCoordsInRandomRoom = (
 
   if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
     tries++;
-    return generateRandomCoordsInRandomRoom(rooms, avoidPoint);
+    return generateRandomCoordsInRandomRoom(rooms, avoidPoint, tries);
   }
+
+  return {x, y};
+};
+
+export const generateRandomCoordsAwayFromRoom = (
+  rooms: Room[],
+  currentRoom: Room,
+  pointToGetAwayFrom: Coords,
+  directionToEscapeTo: {vectorX: number, vectorY: number},
+): Coords => {
+  let availableRooms: Room[] = rooms;
+
+  if (directionToEscapeTo.vectorX < 0) {
+    // Go left.
+    availableRooms = rooms.filter(r => r.rightX() <= currentRoom.leftX());
+  } else if (directionToEscapeTo.vectorX > 0) {
+    // Go right.
+    availableRooms = rooms.filter(r => r.leftX() >= currentRoom.rightX());
+  } else if (directionToEscapeTo.vectorX === 0 && directionToEscapeTo.vectorY < 0) {
+    // Go up.
+    availableRooms = rooms.filter(r => r.bottomY() <= currentRoom.topY());
+  } else if (directionToEscapeTo.vectorX === 0 && directionToEscapeTo.vectorY > 0) {
+    // Go down.
+    availableRooms = rooms.filter(r => r.topY() >= currentRoom.bottomY());
+  }
+
+  if (availableRooms.length === 0) {
+    return generateRandomCoordsInRandomRoom(rooms, pointToGetAwayFrom);
+  }
+
+  const randomRoom = availableRooms[randomInt(0, availableRooms.length)];
+
+  const x = randomInt(randomRoom.leftX(), randomRoom.rightX() + 1); // randomInt max is exclusive
+  const y = randomInt(randomRoom.topY(), randomRoom.bottomY() + 1); // randomInt max is exclusive
+
+  return {x, y};
+};
+
+export const generateRandomCoordsAwayFromCorridor = (
+  rooms: Room[],
+  corridor: Corridor,
+  pointToGetAwayFrom: Coords,
+  directionToEscapeTo: {vectorX: number, vectorY: number},
+): Coords => {
+  let availableRooms: Room[] = rooms;
+
+  if (directionToEscapeTo.vectorX < 0) {
+    // Go left. Up or down should not be possible anyway.
+    if (corridor.vector === CorridorVector.HORIZONTAL_RIGHT) {
+      availableRooms = rooms.filter(r => r.rightX() <= corridor.startCoords.x);
+    } else if (corridor.vector === CorridorVector.HORIZONTAL_LEFT) {
+      availableRooms = rooms.filter(r => r.rightX() <= corridor.endCoords.x);
+    }
+  } else if (directionToEscapeTo.vectorX > 0) {
+    // Go right. Up or down should not be possible anyway.
+    if (corridor.vector === CorridorVector.HORIZONTAL_RIGHT) {
+      availableRooms = rooms.filter(r => r.leftX() >= corridor.endCoords.x);
+    } else if (corridor.vector === CorridorVector.HORIZONTAL_LEFT) {
+      availableRooms = rooms.filter(r => r.leftX() >= corridor.startCoords.x);
+    }
+  } else if (directionToEscapeTo.vectorX === 0 && directionToEscapeTo.vectorY < 0) {
+    // Go up. Left or right should not be possible anyway.
+    if (corridor.vector === CorridorVector.VERTICAL_UP) {
+      availableRooms = rooms.filter(r => r.bottomY() <= corridor.endCoords.y);
+    } else if (corridor.vector === CorridorVector.VERTICAL_DOWN) {
+      availableRooms = rooms.filter(r => r.bottomY() <= corridor.startCoords.y);
+    }
+  } else if (directionToEscapeTo.vectorX === 0 && directionToEscapeTo.vectorY > 0) {
+    // Go down. Left or right should not be possible anyway.
+    if (corridor.vector === CorridorVector.VERTICAL_UP) {
+      availableRooms = rooms.filter(r => r.topY() >= corridor.startCoords.y);
+    } else if (corridor.vector === CorridorVector.VERTICAL_DOWN) {
+      availableRooms = rooms.filter(r => r.topY() >= corridor.endCoords.y);
+    }
+  }
+
+  if (availableRooms.length === 0) {
+    return generateRandomCoordsInSpecificCorridor(corridor, pointToGetAwayFrom);
+  }
+
+  const randomRoom = availableRooms[randomInt(0, availableRooms.length)];
+
+  const x = randomInt(randomRoom.leftX(), randomRoom.rightX() + 1); // randomInt max is exclusive
+  const y = randomInt(randomRoom.topY(), randomRoom.bottomY() + 1); // randomInt max is exclusive
 
   return {x, y};
 };
@@ -61,7 +142,7 @@ export const generateRandomCoordsInSpecificRoom = (
 
   if (avoidPoint && x === avoidPoint.x && y === avoidPoint.y) {
     tries++;
-    return generateRandomCoordsInSpecificRoom(room, avoidPoint);
+    return generateRandomCoordsInSpecificRoom(room, avoidPoint, tries);
   }
 
   return {x, y};

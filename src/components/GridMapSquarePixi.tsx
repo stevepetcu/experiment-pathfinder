@@ -21,15 +21,15 @@ import {Character, DEFAULT_SPEED, getCharacter, Speed} from '../models/Character
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {Coords} from '../models/Coords';
 import {
-  generateCorridors,
+  generateCorridors, generateRandomCoordsAwayFromCorridor,
+  generateRandomCoordsAwayFromRoom,
   generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificCorridor,
-  generateRandomCoordsInSpecificRoom,
-  generateRooms,
+  generateRandomCoordsInSpecificRoom, generateRooms,
 } from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import delay from '../utils/Delay';
-import {calcDiagonalDistance} from '../utils/DistanceCalculator';
+import {calcDiagonalDistance, calcVectorFromPointAToPointB} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {formatSeconds} from '../utils/Time';
@@ -323,6 +323,55 @@ export default function GridMapSquarePixi(): JSXElement {
       }
       if (distanceToPlayer < spotLightRadius * 0.7) {
         critterSprite.sprite.alpha = 1;
+
+        if (!critterInstance.isActive) {
+          let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
+
+          const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
+          const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
+          const vectorFromCritterToPlayer = calcVectorFromPointAToPointB(
+            {x: critterInstance.x, y: critterInstance.y},
+            {x: player.x, y: player.y},
+          );
+
+          if (critterRoom) {
+            randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
+              generatedRooms,
+              critterRoom,
+              {x: player.x, y: player.y},
+              vectorFromCritterToPlayer,
+            );
+          } else {
+            const critterCorridor = generatedCorridors.find(corridor => corridor.id === critterCell.roomId);
+
+            if (critterCorridor) {
+              randomCoordsToGetAway = generateRandomCoordsAwayFromCorridor(
+                generatedRooms,
+                critterCorridor,
+                {x: player.x, y: player.y},
+                vectorFromCritterToPlayer,
+              );
+            }
+          }
+
+          //Stop critter from moving in the initial direction.
+          critterInstance!.isChangingDirection = true;
+
+          // Prevent critter from freaking out too often and trying to get random escape points all the time.
+          critterInstance.isActive = true;
+
+          setTimeout(() => {
+            // Clear panic state after 3s so that the critter can find a new escape point, if needed.
+            critterInstance.isActive = false;
+          }, 1000);
+
+          critterInstance.moveTo(
+            // TODO: a method to moveTo Coords instead of a cell would be nice.
+            critterInstance.pathfinder.getGridCellAt(randomCoordsToGetAway.x, randomCoordsToGetAway.y),
+            critterSpeed,
+          );
+        }
+
         // critterSprite.sprite.tint = 'yellow';
       }
       if (distanceToPlayer < spotLightRadius * 0.1) {
@@ -395,6 +444,55 @@ export default function GridMapSquarePixi(): JSXElement {
         }
         if (distanceToPlayer < spotLightRadius * 0.7) {
           critterSprite.sprite.alpha = 1;
+
+          if (!critterInstance.isActive) {
+            let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
+
+            const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
+            const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
+            const vectorFromCritterToPlayer = calcVectorFromPointAToPointB(
+              {x: critterInstance.x, y: critterInstance.y},
+              {x: player.x, y: player.y},
+            );
+
+            if (critterRoom) {
+              randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
+                generatedRooms,
+                critterRoom,
+                {x: player.x, y: player.y},
+                vectorFromCritterToPlayer,
+              );
+            } else {
+              const critterCorridor = generatedCorridors.find(corridor => corridor.id === critterCell.roomId);
+
+              if (critterCorridor) {
+                randomCoordsToGetAway = generateRandomCoordsAwayFromCorridor(
+                  generatedRooms,
+                  critterCorridor,
+                  {x: player.x, y: player.y},
+                  vectorFromCritterToPlayer,
+                );
+              }
+            }
+
+            //Stop critter from moving in the initial direction.
+            critterInstance!.isChangingDirection = true;
+
+            // Prevent critter from freaking out too often and trying to get random escape points all the time.
+            critterInstance.isActive = true;
+
+            setTimeout(() => {
+              // Clear panic state after 3s so that the critter can find a new escape point, if needed.
+              critterInstance.isActive = false;
+            }, 1000);
+
+            critterInstance.moveTo(
+              // TODO: a method to moveTo Coords instead of a cell would be nice.
+              critterInstance.pathfinder.getGridCellAt(randomCoordsToGetAway.x, randomCoordsToGetAway.y),
+              critterSpeed,
+            );
+          }
+
           // critterSprite.sprite.tint = 'yellow';
         }
         if (distanceToPlayer < spotLightRadius * 0.1) {
@@ -482,8 +580,8 @@ export default function GridMapSquarePixi(): JSXElement {
 
       await critter.moveTo(generatedGrid.getCellAt(randomLocation.x, randomLocation.y), critterSpeed);
 
-      // Wait 2 seconds after reaching the destination.
-      await delay(2000);
+      // Once destination was reached, wait 1 second plus a jitter before moving again.
+      await delay(1000 + randomInt(500, 1200));
       await critterBehaviour(critter, playerInstance);
     };
     // End "Critter stuff"
@@ -849,9 +947,9 @@ export default function GridMapSquarePixi(): JSXElement {
       critterBehaviour(critter, player);
     }
 
-    for (const ghost of ghosts) {
-      ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
-    }
+    // for (const ghost of ghosts) {
+    //   ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
+    // }
 
     setIsGameStarted(true);
     playTimeTracker = setInterval(() => {

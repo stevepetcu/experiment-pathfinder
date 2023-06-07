@@ -17,3 +17,13 @@ export const calcDiagonalDistance = (
 
   return Math.min(deltaX, deltaY) * Math.sqrt(2) + Math.abs(deltaX - deltaY);
 };
+
+export const calcVectorFromPointAToPointB = (
+  pointA: Coords,
+  pointB: Coords,
+): {vectorX: number, vectorY: number} => {
+  const vectorX = pointA.x - pointB.x;
+  const vectorY = pointA.y - pointB.y;
+
+  return { vectorX, vectorY };
+};

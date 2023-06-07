@@ -15,7 +15,7 @@ export interface GridCell {
   x: number;
   y: number;
   status: CellStatus;
-  roomId?: RoomDto['id'];
+  roomId?: RoomDto['id'] | Corridor['id'];
   isAccessible: () => boolean;
 }
 

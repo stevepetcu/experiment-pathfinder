@@ -1,6 +1,7 @@
 import {UUID} from 'crypto';
 
 import delay from '../utils/Delay';
+import {calcVectorFromPointAToPointB} from '../utils/DistanceCalculator';
 import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {Coords} from './Coords';
 import {Pathfinder} from './Pathfinder';
@@ -41,7 +42,8 @@ export interface Character {
     vectorY: number;
   },
   isAlive: boolean;
-  setIsAlive: (isAlive: boolean) => void;
+  setIsAlive: (isAlive: boolean) => void; // TODO: don't really need this fn.
+  isActive: boolean; // TODO: a generic flag to use for critters and ghosts because I'm too lazy to do a better solution.
 }
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
@@ -71,8 +73,10 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
   };
 
   const moveToCoords = (x: number, y:number) => {
-    const vectorX = x - _this.x;
-    const vectorY = y - _this.y;
+    const {vectorX, vectorY} = calcVectorFromPointAToPointB(
+      {x, y},
+      {x: _this.x, y: _this.y},
+    );
     _this.movementState.vectorX = vectorX;
     _this.movementState.vectorY = vectorY;
 
@@ -159,6 +163,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     movementState,
     isAlive: true,
     setIsAlive,
+    isActive: false,
   };
 
   updateGameState();
