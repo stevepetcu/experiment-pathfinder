@@ -294,6 +294,10 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
+      if (critterInstance.isActive) {
+        critterSprite.sprite.tint = 'red';
+      }
+
       if (!critterInstance.isAlive) {
         // critterSprite.sprite.tint = 'grey';
         critterSprite.sprite.alpha = 0;
@@ -324,15 +328,24 @@ export default function GridMapSquarePixi(): JSXElement {
       if (distanceToPlayer < spotLightRadius * 0.7) {
         critterSprite.sprite.alpha = 1;
 
+        // critterSprite.sprite.tint = 'yellow';
+      }
+      if (distanceToPlayer < spotLightRadius * 0.5) {
+        critterSprite.sprite.tint = 'blue';
+
+        // if (!critterInstance.isActive || !critterInstance.willMeet(player)) {
         if (!critterInstance.isActive) {
+          //Stop critter from moving in the initial direction.
+          critterInstance!.isChangingDirection = true;
           let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
 
           const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
-          const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
           const vectorFromCritterToPlayer = calcVectorFromPointAToPointB(
             {x: critterInstance.x, y: critterInstance.y},
             {x: player.x, y: player.y},
           );
+
+          const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
 
           if (critterRoom) {
             randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
@@ -354,16 +367,8 @@ export default function GridMapSquarePixi(): JSXElement {
             }
           }
 
-          //Stop critter from moving in the initial direction.
-          critterInstance!.isChangingDirection = true;
-
           // Prevent critter from freaking out too often and trying to get random escape points all the time.
-          critterInstance.isActive = true;
-
-          setTimeout(() => {
-            // Clear panic state after 3s so that the critter can find a new escape point, if needed.
-            critterInstance.isActive = false;
-          }, 1000);
+          critterInstance.triggerIsActive();
 
           critterInstance.moveTo(
             // TODO: a method to moveTo Coords instead of a cell would be nice.
@@ -371,8 +376,6 @@ export default function GridMapSquarePixi(): JSXElement {
             critterSpeed,
           );
         }
-
-        // critterSprite.sprite.tint = 'yellow';
       }
       if (distanceToPlayer < spotLightRadius * 0.1) {
         // critterSprite.sprite.tint = 'blue';
@@ -445,7 +448,16 @@ export default function GridMapSquarePixi(): JSXElement {
         if (distanceToPlayer < spotLightRadius * 0.7) {
           critterSprite.sprite.alpha = 1;
 
+          // critterSprite.sprite.tint = 'yellow';
+        }
+        if (distanceToPlayer < spotLightRadius * 0.5) {
+          critterSprite.sprite.tint = 'blue';
+
+          // if (!critterInstance.isActive || !critterInstance.willMeet(player)) {
           if (!critterInstance.isActive) {
+            //Stop critter from moving in the initial direction.
+            critterInstance!.isChangingDirection = true;
+
             let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
 
             const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
@@ -475,16 +487,8 @@ export default function GridMapSquarePixi(): JSXElement {
               }
             }
 
-            //Stop critter from moving in the initial direction.
-            critterInstance!.isChangingDirection = true;
-
             // Prevent critter from freaking out too often and trying to get random escape points all the time.
-            critterInstance.isActive = true;
-
-            setTimeout(() => {
-              // Clear panic state after 3s so that the critter can find a new escape point, if needed.
-              critterInstance.isActive = false;
-            }, 1000);
+            critterInstance.triggerIsActive();
 
             critterInstance.moveTo(
               // TODO: a method to moveTo Coords instead of a cell would be nice.
@@ -492,8 +496,6 @@ export default function GridMapSquarePixi(): JSXElement {
               critterSpeed,
             );
           }
-
-          // critterSprite.sprite.tint = 'yellow';
         }
         if (distanceToPlayer < spotLightRadius * 0.1) {
           // critterSprite.sprite.tint = 'blue';

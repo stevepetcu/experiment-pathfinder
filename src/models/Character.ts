@@ -42,8 +42,11 @@ export interface Character {
     vectorY: number;
   },
   isAlive: boolean;
-  setIsAlive: (isAlive: boolean) => void; // TODO: don't really need this fn.
+  setIsAlive: (isAlive: boolean) => void;
   isActive: boolean; // TODO: a generic flag to use for critters and ghosts because I'm too lazy to do a better solution.
+  triggerIsActive: () => void;
+  willMeet: (otherCharacter: Character) => boolean;
+  currentPath: GridCell[]
 }
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
@@ -70,6 +73,32 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
   const setIsAlive = (isAlive: boolean) => {
     _this.isAlive = isAlive;
     updateGameState();
+  };
+
+  const triggerIsActive = () => {
+    if (!_this.isActive) {
+      _this.isActive = true;
+      updateGameState();
+    }
+
+    setTimeout(() => {
+      _this.isActive = false;
+    }, 1500);
+  };
+
+  const willMeet = (otherCharacter: Character): boolean => {
+    const meetupCell = _this.currentPath.find(cell => otherCharacter.currentPath.includes(cell));
+
+    if (!meetupCell) {
+      return false;
+    }
+
+    const critterIndexOfMeetupCell = _this.currentPath.indexOf(meetupCell);
+    const otherCharIndexOfMeetupCell = otherCharacter.currentPath.indexOf(meetupCell);
+
+    // Return false if the paths don't intersect at the same time or if there's more than 2 blocks until they intersect.
+    return !(critterIndexOfMeetupCell !== otherCharIndexOfMeetupCell
+      || _this.currentPath.length - critterIndexOfMeetupCell > 3);
   };
 
   const moveToCoords = (x: number, y:number) => {
@@ -108,11 +137,11 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
   };
 
   const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED) => {
-    const path = pathfinder
+    _this.currentPath = pathfinder
       .tracePath(pathfinder.getGridCellAt(_this.x, _this.y), cell)
       .reverse();
 
-    await takePath(path, true, speed);
+    await takePath(_this.currentPath, true, speed);
   };
 
   const takePath = async (path: GridCell[], isNewPath: boolean, speed: Speed): Promise<void> => {
@@ -153,6 +182,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
   };
 
   // TODO: refactor models – most of them don't need a _this (unless I need to call another object on _this object).
+  const currentPath: GridCell[] = [];
   const _this = {
     id,
     x: startingCoords.x,
@@ -164,6 +194,9 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     isAlive: true,
     setIsAlive,
     isActive: false,
+    triggerIsActive,
+    willMeet,
+    currentPath,
   };
 
   updateGameState();
