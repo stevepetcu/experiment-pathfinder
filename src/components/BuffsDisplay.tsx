@@ -15,7 +15,7 @@ export default function BuffsDisplay(props: BuffDisplayProps): JSXElement {
           Buffs:
         </p>
         <img onClick={() => setShowBuffTooltip(!showBuffTooltip())}
-          src={buff.spriteImage} alt={buff.description} class={'w-6 h-6'}/>
+          src={buff.spriteImage} alt={buff.description} class={'w-6 h-6 cursor-pointer'}/>
         {buff.stacks > 1 &&
         <p class={'text-xl sm:text-3xl md:text-4xl leading-9 text-white'}>x {buff.stacks}</p>
         }
