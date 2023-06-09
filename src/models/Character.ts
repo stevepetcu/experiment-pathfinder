@@ -2,10 +2,11 @@ import {UUID} from 'crypto';
 
 import delay from '../utils/Delay';
 import {calcVectorFromPointAToPointB} from '../utils/DistanceCalculator';
+import randomInt from '../utils/RandomInt';
 import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {Coords} from './Coords';
 import {Pathfinder} from './Pathfinder';
-import { GridCell} from './SquareGrid';
+import {CellStatus, GridCell} from './SquareGrid';
 
 export interface Speed {
   px: number;
@@ -32,7 +33,8 @@ export interface Character {
   id: UUID,
   x: Coords['x'];
   y: Coords['y'];
-  moveTo: (cell: GridCell, speed: Speed) => void;
+  moveTo: (cell: GridCell, speed: Speed, avoidCell?: GridCell) => void;
+  moveAwayFrom: (coords: Coords, speed: Speed) => void; // TODO: refactor these methods so they're more consistent w/ each other.
   pathfinder: Pathfinder;
   isChangingDirection: boolean;
   movementState: {
@@ -44,8 +46,8 @@ export interface Character {
   },
   isAlive: boolean;
   setIsAlive: (isAlive: boolean) => void;
-  isActive: boolean; // TODO: a generic flag to use for critters and ghosts because I'm too lazy to do a better solution.
-  setIsActive: (state: boolean) => void;
+  isTriggered: boolean; // TODO: a generic flag to use for critters and ghosts because I'm too lazy to do a better solution.
+  setIsTriggered: (state: boolean) => void;
   willMeet: (otherCharacter: Character) => boolean;
   currentPath: GridCell[];
   stopMoving: () => void;
@@ -78,8 +80,8 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     updateGameState();
   };
 
-  const setIsActive = (state: boolean) => {
-    _this.isActive = state;
+  const setIsTriggered = (state: boolean) => {
+    _this.isTriggered = state;
     // updateGameState();
   };
 
@@ -106,46 +108,8 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
       return result;
     }
 
+    // Don't handle both characters moving.
     return false;
-
-    // Both characters are moving; we need to figure out if they will meet in a cell.
-    // To meet in any cell, the following conditions must be true:
-    // 1. The character paths must share at least a cell - we'll search for the first shared cell from the end of their path arrays.
-    // 2. If the character speeds were equal, we would check that the path index for the cells is equal, like so:
-    //    _this.currentPath[meetupCellIndex] === otherCharacter.currentPath[meetupCellIndex]
-    //    Given the character speeds are _not_ equal, we have to calculate whether they'll meet at the cell.
-
-    // 1. Get the meetup cell index: this is the index in _this character's path.
-    // const meetupCellIndex = _this.currentPath.findLastIndex(cell => otherCharacter.currentPath.includes(cell));
-    //
-    // if (meetupCellIndex < 0) {
-    //   return false;
-    // }
-    //
-    // // 2. Calculate the speed factor and whether they'll meet:
-    // const speedFactor = _this.movementState.speed.ms/otherCharacter.movementState.speed.ms;
-    // const otherCharMeetupCellIndex = otherCharacter.currentPath.lastIndexOf(_this.currentPath[meetupCellIndex]);
-    //
-    // const thisTimeFromCurrentCellToMeetupCell = (_this.currentPath.length - 1) - meetupCellIndex + 1;
-    // const otherTimeFromCurrentCellToMeetupCell = (otherCharacter.currentPath.length - 1) - otherCharMeetupCellIndex + 1;
-    //
-    // // Attempt at a formula: time difference between reaching the common cell must be strictly smaller than
-    // // the speed factor times the fastest speed.
-    // const result = Math.abs(thisTimeFromCurrentCellToMeetupCell - otherTimeFromCurrentCellToMeetupCell) <
-    //   speedFactor * Math.min(_this.movementState.speed.ms, otherCharacter.movementState.speed.ms);
-
-    // console.log('HERE');
-    // if (result) {
-    //   console.log('\n\nTRUE::::' + Date.now());
-    //   console.log(meetupCellIndex);
-    //   console.log(_this.currentPath[meetupCellIndex], otherCharacter.currentPath[meetupCellIndex]);
-    //   console.log(result);
-    // } else {
-    //   console.log('FALSE');
-    // }
-
-
-    // return result;
   };
 
   const moveToCoords = (x: number, y:number) => {
@@ -184,14 +148,56 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     updateGameState();
   };
 
-  const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED) => {
+  const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED, avoidCell?: GridCell) => {
+    // TODO: move isChangingDirection = true here?
     _this.movementState.speed = speed;
 
     _this.currentPath = pathfinder
-      .tracePath(pathfinder.getGridCellAt(_this.x, _this.y), cell)
+      .tracePath(
+        pathfinder.getGridCellAt(_this.x, _this.y),
+        cell,
+        avoidCell,
+      )
       .reverse();
 
     await takePath(_this.currentPath, true);
+  };
+
+  const moveAwayFrom = async (coords: Coords, speed = DEFAULT_SPEED) => {
+    const vectorTowardsOtherPoint = calcVectorFromPointAToPointB(
+      {x: _this.x, y: _this.y},
+      {x: coords.x, y: coords.y},
+    );
+
+    let i = 3;
+    let j = 5;
+    let moveDistance = randomInt(i, j);
+    let cellToMoveTo = pathfinder.getGridCellAt(
+      Math.sign(vectorTowardsOtherPoint.vectorX) * moveDistance + _this.x,
+      Math.sign(vectorTowardsOtherPoint.vectorY) * moveDistance + _this.y,
+    );
+
+    while (cellToMoveTo.status === CellStatus.OUT_OF_BOUNDS) {
+      if (i === 0 && j === 0) {
+        stopMoving();
+        return;
+      }
+
+      if (i > 0) {
+        i--;
+      }
+      if (j > 0) {
+        j--;
+      }
+
+      moveDistance = randomInt(i, j);
+      cellToMoveTo = pathfinder.getGridCellAt(
+        Math.sign(vectorTowardsOtherPoint.vectorX) * moveDistance + _this.x,
+        Math.sign(vectorTowardsOtherPoint.vectorY) * moveDistance + _this.y,
+      );
+    }
+
+    await moveTo(cellToMoveTo, speed);
   };
 
   const takePath = async (path: GridCell[], isNewPath: boolean): Promise<void> => {
@@ -243,11 +249,12 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     movementState,
     isAlive: true,
     setIsAlive,
-    isActive: false,
-    setIsActive,
+    isTriggered: false,
+    setIsTriggered,
     willMeet,
     currentPath,
     stopMoving,
+    moveAwayFrom,
   };
 
   updateGameState();

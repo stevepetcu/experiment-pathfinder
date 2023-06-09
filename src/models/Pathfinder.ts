@@ -111,7 +111,11 @@ export interface Pathfinder {
   cells: PathfinderCell[][];
   dirtyCells: PathfinderCell[];
   heap: BinaryHeap<PathfinderCell>;
-  tracePath: (from: GridCell, to: GridCell) => GridCell[];
+  tracePath: (
+    from: GridCell,
+    to: GridCell,
+    avoidCell?: GridCell,
+  ) => GridCell[];
   getGridCellAt: (x: number, y: number) => GridCell;
   options: {
     allowDiagonalMovement: boolean;
@@ -148,7 +152,7 @@ export const getPathfinder = (
     return grid.getCellAt(x, y);
   };
 
-  const getNeighbours = (cell: PathfinderCell): { cell: PathfinderCell, cost: number }[] => {
+  const getNeighbours = (cell: PathfinderCell, avoidCell?: GridCell): { cell: PathfinderCell, cost: number }[] => {
     const neighbourCoords = cell.getNeighbourCoordinates();
     const neighbourCoordsForHeuristic = _this.options.allowDiagonalMovement ?
       neighbourCoords.corners.concat(neighbourCoords.sides) :
@@ -156,10 +160,32 @@ export const getPathfinder = (
     const neighbours: { cell: PathfinderCell, cost: number }[] = [];
     neighbourCoordsForHeuristic.map(nc => {
       if (_this.cells[nc.y][nc.x].isAccessible()) {
-        neighbours.push({
-          cell: _this.cells[nc.y][nc.x],
-          cost: nc.cost,
-        });
+        if (!avoidCell) {
+          neighbours.push({
+            cell: _this.cells[nc.y][nc.x],
+            cost: nc.cost,
+          });
+        } else {
+          // Avoid the cell and its neighbours by increasing their weight.
+
+          const pathfinderCellToAvoid = getPathfinderCell(avoidCell, avoidCell.isAccessible() ? 1 : 0);
+          const cellToAvoidNeighbourCoords = pathfinderCellToAvoid.getNeighbourCoordinates();
+          const avoidCoords = cellToAvoidNeighbourCoords.sides.concat(cellToAvoidNeighbourCoords.corners);
+
+          const neighbourToPush = {
+            cell: _this.cells[nc.y][nc.x],
+            cost: nc.cost,
+          };
+
+          if (nc.x === pathfinderCellToAvoid.gridCell.x && nc.y === pathfinderCellToAvoid.gridCell.y) {
+            neighbourToPush.cost *= 3;
+          }
+          if (avoidCoords.some(ac => ac.x === nc.x && ac.y === nc.y)) {
+            neighbourToPush.cost *= 2;
+          }
+
+          neighbours.push(neighbourToPush);
+        }
       }
     });
 
@@ -178,9 +204,8 @@ export const getPathfinder = (
     return result.map(cell => cell.gridCell);
   };
 
-  const tracePath = (from: GridCell, to: GridCell): GridCell[] => {
+  const tracePath = (from: GridCell, to: GridCell, avoidCell?: GridCell): GridCell[] => {
     reset();
-
     const heuristic = pfOptions.allowDiagonalMovement ? calcDiagonalDistance : calcManhattanDistance;
     const start: PathfinderCell = _this.cells[from.y][from.x];
     const end: PathfinderCell = _this.cells[to.y][to.x];
@@ -204,7 +229,7 @@ export const getPathfinder = (
       currentElement.closed = true;
 
       // Find all the neighbours for the current node.
-      const neighbours = getNeighbours(currentElement);
+      const neighbours = getNeighbours(currentElement, avoidCell);
 
       for (let i = 0, il = neighbours.length; i < il; i++) {
         const neighbour = neighbours[i];
