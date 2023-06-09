@@ -17,12 +17,11 @@ import {
 import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 
 import charTextures from '../assets/CharTextures';
-import {Character, DEFAULT_SPEED, getCharacter, Speed} from '../models/Character';
+import {Character, getCharacter, Speed} from '../models/Character';
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {Coords} from '../models/Coords';
 import {
-  generateCorridors, generateRandomCoordsAwayFromCorridor,
-  generateRandomCoordsAwayFromRoom,
+  generateCorridors, generateRandomCoordsAwayFromCorridor, generateRandomCoordsAwayFromRoom,
   generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificCorridor,
   generateRandomCoordsInSpecificRoom, generateRooms,
 } from '../models/Map';
@@ -77,9 +76,9 @@ export default function GridMapSquarePixi(): JSXElement {
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
   //  Just pick one of them, since they must always be equal.
-  const basePlayerSpeed: Speed = {...DEFAULT_SPEED, px: cellWidth};
+  const basePlayerSpeed: Speed = {ms: 500, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
-  const critterSpeed: Speed = {ms: 150, px: cellWidth};
+  const critterSpeed: Speed = {ms: 250, px: cellWidth};
   const ghostSpeed = {ms: 120, px: cellWidth};
 
   // TODO do I need signals here?
@@ -319,6 +318,8 @@ export default function GridMapSquarePixi(): JSXElement {
 
       if (distanceToPlayer >= spotLightRadius) {
         critterSprite.sprite.alpha = 0;
+        critterInstance.setIsActive(false);
+        critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
         // critterSprite.sprite.tint = 'red';
       }
       if (distanceToPlayer < spotLightRadius) {
@@ -331,51 +332,67 @@ export default function GridMapSquarePixi(): JSXElement {
         // critterSprite.sprite.tint = 'yellow';
       }
       if (distanceToPlayer < spotLightRadius * 0.5) {
-        critterSprite.sprite.tint = 'blue';
+        critterSprite.sprite.tint = 'blue';  // TODO: use the frowning fish texture?
 
-        // if (!critterInstance.isActive || !critterInstance.willMeet(player)) {
-        if (!critterInstance.isActive) {
-          //Stop critter from moving in the initial direction.
-          critterInstance!.isChangingDirection = true;
-          let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
-
-          const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
-          const vectorFromCritterToPlayer = calcVectorFromPointAToPointB(
-            {x: critterInstance.x, y: critterInstance.y},
-            {x: player.x, y: player.y},
-          );
-
-          const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
-
-          if (critterRoom) {
-            randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
-              generatedRooms,
-              critterRoom,
-              {x: player.x, y: player.y},
-              vectorFromCritterToPlayer,
-            );
-          } else {
-            const critterCorridor = generatedCorridors.find(corridor => corridor.id === critterCell.roomId);
-
-            if (critterCorridor) {
-              randomCoordsToGetAway = generateRandomCoordsAwayFromCorridor(
-                generatedRooms,
-                critterCorridor,
-                {x: player.x, y: player.y},
-                vectorFromCritterToPlayer,
-              );
-            }
-          }
-
-          // Prevent critter from freaking out too often and trying to get random escape points all the time.
-          critterInstance.triggerIsActive();
-
-          critterInstance.moveTo(
-            // TODO: a method to moveTo Coords instead of a cell would be nice.
-            critterInstance.pathfinder.getGridCellAt(randomCoordsToGetAway.x, randomCoordsToGetAway.y),
-            critterSpeed,
-          );
+        if (
+          // player.movementState.action === 'lookingAround'
+          critterInstance.movementState.action === 'running'
+          && critterInstance.willMeet(player)
+          // && !critterInstance.isActive
+        ) {
+          // Stop critter from moving in the initial direction.
+          critterInstance.stopMoving();
         }
+
+        // if (
+        //   critterInstance.willMeet(player)
+        //   && critterInstance.movementState.action === 'running'
+        // ) {
+        //   // Stop critter from moving in the initial direction.
+        //   critterInstance.stopMoving();
+        // }
+
+        // if (!critterInstance.isActive) {
+        //   // If the critter has not already recently ran away from the player && the critter's heading towards the player.
+        //   let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
+        //
+        //   const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
+        //   const vectorFromCritterToPlayer = calcVectorFromPointAToPointB(
+        //     {x: critterInstance.x, y: critterInstance.y},
+        //     {x: player.x, y: player.y},
+        //   );
+        //
+        //   const critterRoom = generatedRooms.find(room => room.roomDto.id === critterCell.roomId);
+        //
+        //   if (critterRoom) {
+        //     randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
+        //       generatedRooms,
+        //       critterRoom,
+        //       {x: player.x, y: player.y},
+        //       vectorFromCritterToPlayer,
+        //     );
+        //   } else {
+        //     const critterCorridor = generatedCorridors.find(corridor => corridor.id === critterCell.roomId);
+        //
+        //     if (critterCorridor) {
+        //       randomCoordsToGetAway = generateRandomCoordsAwayFromCorridor(
+        //         generatedRooms,
+        //         critterCorridor,
+        //         {x: player.x, y: player.y},
+        //         vectorFromCritterToPlayer,
+        //       );
+        //     }
+        //   }
+        //
+        //   // Prevent critter from freaking out too often and trying to get random escape points all the time.
+        //   critterInstance.triggerIsActive();
+        //
+        //   critterInstance.moveTo(
+        //     // TODO: a method to moveTo Coords instead of a cell would be nice.
+        //     critterInstance.pathfinder.getGridCellAt(randomCoordsToGetAway.x, randomCoordsToGetAway.y),
+        //     critterSpeed,
+        //   );
+        // }
       }
       if (distanceToPlayer < spotLightRadius * 0.1) {
         // critterSprite.sprite.tint = 'blue';
@@ -399,6 +416,8 @@ export default function GridMapSquarePixi(): JSXElement {
           }
 
           playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+          player.movementState.speed = playerSpeed;
+
           light.scale.set(sightBoost, sightBoost);
           light2.scale.set(sightBoost, sightBoost);
           light3.scale.set(sightBoost, sightBoost);
@@ -439,6 +458,9 @@ export default function GridMapSquarePixi(): JSXElement {
 
         if (distanceToPlayer >= spotLightRadius) {
           critterSprite.sprite.alpha = 0;
+          critterSprite.sprite.tint = new Color('rgb(255,142,155)');
+          critterInstance.setIsActive(false);
+
           // critterSprite.sprite.tint = 'red';
         }
         if (distanceToPlayer < spotLightRadius) {
@@ -451,13 +473,34 @@ export default function GridMapSquarePixi(): JSXElement {
           // critterSprite.sprite.tint = 'yellow';
         }
         if (distanceToPlayer < spotLightRadius * 0.5) {
-          critterSprite.sprite.tint = 'blue';
+          critterSprite.sprite.tint = 'blue'; // TODO: use the frowning fish texture?
 
-          // if (!critterInstance.isActive || !critterInstance.willMeet(player)) {
-          if (!critterInstance.isActive) {
-            //Stop critter from moving in the initial direction.
-            critterInstance!.isChangingDirection = true;
+          // if (
+          // !critterInstance.isActive &&
+          // critterInstance.willMeet(player) &&
+          // critterInstance.movementState.action === 'running') {
+          // Stop critter from moving in the initial direction.
+          // critterInstance.isChangingDirection = true;
+          // critterInstance.stopMoving();
+          // }
 
+          if (
+            critterInstance.movementState.action === 'running'
+            && !critterInstance.isActive
+            // &&
+            // ((critterInstance.x === playerInstance.x &&
+            //     critterInstance.movementState.vectorX === -1 * playerInstance.movementState.vectorX) ||
+            //   (critterInstance.y === playerInstance.y &&
+            //     critterInstance.movementState.vectorY === -1 * playerInstance.movementState.vectorY))
+          ) {
+            critterInstance.stopMoving();
+          }
+
+          if (
+            critterInstance.movementState.action === 'lookingAround'
+            // && player.willMeet(critterInstance)
+            // && !critterInstance.isActive
+          ) {
             let randomCoordsToGetAway: Coords = {x: critterInstance.x, y: critterInstance.y};
 
             const critterCell = critterInstance.pathfinder.getGridCellAt(critterInstance.x, critterInstance.y);
@@ -466,6 +509,8 @@ export default function GridMapSquarePixi(): JSXElement {
               {x: critterInstance.x, y: critterInstance.y},
               {x: player.x, y: player.y},
             );
+
+            console.log('Running away!');
 
             if (critterRoom) {
               randomCoordsToGetAway = generateRandomCoordsAwayFromRoom(
@@ -488,7 +533,7 @@ export default function GridMapSquarePixi(): JSXElement {
             }
 
             // Prevent critter from freaking out too often and trying to get random escape points all the time.
-            critterInstance.triggerIsActive();
+            critterInstance.setIsActive(true);
 
             critterInstance.moveTo(
               // TODO: a method to moveTo Coords instead of a cell would be nice.
@@ -498,6 +543,7 @@ export default function GridMapSquarePixi(): JSXElement {
           }
         }
         if (distanceToPlayer < spotLightRadius * 0.1) {
+          console.log((critterInstance.isActive));
           // critterSprite.sprite.tint = 'blue';
           if (!crittersEaten.includes(critterInstance.id)) {
             critterInstance.setIsAlive(false);
@@ -522,6 +568,8 @@ export default function GridMapSquarePixi(): JSXElement {
             }
 
             playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+            player.movementState.speed = playerSpeed;
+
             light.scale.set(sightBoost, sightBoost);
             light2.scale.set(sightBoost, sightBoost);
             light3.scale.set(sightBoost, sightBoost);
@@ -876,7 +924,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       dustSprite.x = player.x * playerSpeed.px;
       dustSprite.y = player.y * playerSpeed.px - playerSpeed.px * 0.15;
-      if (ms.action === 'running' && playerSpeed.ms <= 180) {
+      if (ms.action === 'running' && playerSpeed.ms <= 150) {
         dustSprite.gotoAndPlay(0);
       }
 
@@ -912,6 +960,7 @@ export default function GridMapSquarePixi(): JSXElement {
           }
 
           playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+          player.movementState.speed = playerSpeed;
 
           setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
           // setPb(playerBuffs);

@@ -47,7 +47,7 @@ export const getBlobfishBuff = (): CharacterBuff => {
     name: BuffName.BLOBFISH,
     description: 'Improves your speed and sight by a small amount.',
     traits: {
-      'speed': 15,
+      'speed': 25,
       'sight': 0.25,
     },
     spriteImage: '/assets/buffs/milk.png', // TODO: update this
