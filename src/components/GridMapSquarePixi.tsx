@@ -33,6 +33,7 @@ import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {formatSeconds} from '../utils/Time';
 import BuffsDisplay from './BuffsDisplay';
+import EnterButton from './EnterButton';
 
 // interface GridMapSquareProps {
 //   // TODO: add props
@@ -139,26 +140,46 @@ export default function GridMapSquarePixi(): JSXElement {
   const ghostSSMB = getSSMB();
 
   const [finishedLoading, setFinishedLoading] = createSignal(false);
-  const [loadingProgress, setLoadingProgress] = createSignal(0);
+
+  const lineOneContent = 'Eat all the fish.'.split('').reverse();
+  const [lineOne, setLineOne] = createSignal('');
+  const [finishedTypingLineOne, setFinishedTypingLineOne] = createSignal(false);
+
+  const lineTwoContent = 'Don\'t linger. There are other hungry things besides you.'.split('').reverse();
+  const [lineTwo, setLineTwo] = createSignal('');
+  const [finishedTypingLineTwo, setFinishedTypingLineTwo] = createSignal(false);
+
+
+  const typeLineTwo = async (content: string[]) => {
+    if (content.length === 0) {
+      setFinishedTypingLineTwo(true);
+      return;
+    }
+
+    await delay(randomInt(25, 50));
+
+    setLineTwo(line => line + content.pop());
+
+    await typeLineTwo(content);
+  };
+  const typeLineOne = async (content: string[]) => {
+    if (content.length === 0) {
+      setFinishedTypingLineOne(true);
+      typeLineTwo(lineTwoContent);
+      return;
+    }
+
+    await delay(randomInt(25, 50));
+
+    setLineOne(line => line + content.pop());
+
+    await typeLineOne(content);
+  };
+
   const [isGameStarted, setIsGameStarted] = createSignal(false);
 
   onMount(async () => {
-    const smokeAndMirrorsLoading = async () => {
-      const randomWaitTime = randomInt(50, 331);
-      const randomProgress = randomInt(1, 4);
-      await delay(randomWaitTime);
-      if (!finishedLoading() && loadingProgress() < 96) {
-        setLoadingProgress(lp => lp + randomProgress);
-        smokeAndMirrorsLoading();
-      }
-      if (finishedLoading()) {
-        setLoadingProgress(100);
-        return;
-      }
-    };
-
-    smokeAndMirrorsLoading();
-
+    typeLineOne(lineOneContent);
     // Create the actual grid:
     const generatedGrid = await getSquareGrid(mapWidth);
 
@@ -975,16 +996,13 @@ export default function GridMapSquarePixi(): JSXElement {
               style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
                    '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
                    'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
-            <div class={'absolute top-0 left-0 bg-slate-800/75 w-full h-full ' +
+            <div class={'absolute top-0 left-0 bg-slate-800 w-full h-full ' +
               'grid grid-cols-1 gap-8 content-center z-30 '}>
-              <p class={'text-2xl sm:text-3xl md:text-5xl font-bold leading-none text-white antialiased'}>
-                Congrats, you're full! *burp*
+              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
+                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                Congrats, you're full! *burp* Play again?
               </p>
-              <button class="bg-slate-100 hover:bg-white text-slate-800 font-semibold
-                py-5 px-6 border border-gray-400 rounded-2xl shadow inline m-auto min-w-fit
-                text-xl md:text-2xl"
-              onClick={() => location.reload()}>Play again
-              </button>
+              <EnterButton onClick={() => location.reload()} isDisabled={false} />
             </div>
           </>
         }
@@ -997,46 +1015,58 @@ export default function GridMapSquarePixi(): JSXElement {
         >
           {
             (!finishedLoading() || !isGameStarted()) &&
-            <div onClick={() => startGame()}
+            <div
               class={'bg-slate-800 h-full w-full ' +
-                   'grid grid-cols-1 gap-8 content-center z-30 '}
-              classList={{
-                'cursor-wait': !finishedLoading(),
-                'cursor-pointer': finishedLoading(),
-              }}
-            >
-              <p class={'text-3xl sm:text-4xl md:text-6xl leading-none text-slate-400 antialiased'}
-                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                Eat all the fish.
-              </p>
-              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
-                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                Don't linger. There are other hungry things besides you.
-              </p>
-              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-white antialiased'}>
+                   'grid grid-cols-1 content-center z-30 '}>
+              <div class={'w-1/2 text-left fixed bottom-[60%] left-1/4'}>
+                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                  {
+                    !finishedTypingLineOne() && <span class={'animate-pulse absolute -left-5'}>&gt; </span>
+                  }
+                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                    {lineOne()}
+                  </span>
+                  {
+                    !finishedTypingLineOne() && <span>_</span>
+                  }
+                </p>
+                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                  {
+                    finishedTypingLineOne() && <span class={'animate-pulse absolute -left-5'}>&gt; </span>
+                  }
+                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                    {lineTwo()}
+                  </span>
+                  { finishedTypingLineOne() &&
+                    <span classList={{
+                      'animate-pulse': finishedTypingLineTwo(),
+                    }}>_</span>
+                  }
+                </p>
+              </div>
+              <div class={'grid grid-cols-1 gap-8 content-center'}>
                 {
-                  !finishedLoading() && `Loading ${loadingProgress()}%`
+                  <EnterButton onClick={() => startGame()}
+                    isDisabled={!(finishedLoading() && finishedTypingLineTwo())} />
                 }
-                {
-                  finishedLoading() && 'Click anywhere to start'
-                }
-              </p>
+              </div>
             </div>
           }
           {
             finishedLoading() && isGameStarted() &&
             <>
               <div class={'absolute top-5 left-[3%] text-left z-20 ' +
-                'p-3 slashed-zero rounded-lg ' +
-                'bg-gradient-to-r from-slate-700/50 from-45% ' +
-                'outline outline-offset-2 outline-slate-700'}>
+                'p-3 rounded bg-slate-700/30 ' +
+                'outline outline-offset-2 outline-slate-700 '}>
                 <div>
-                  <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}>
+                  <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}
+                    style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     Time played: {formatSeconds(playTime())}
                   </p>
                 </div>
                 <div class={'flex flex-wrap gap-x-3 gap-y-4 items-center max-w-[330px] sm:max-w-sm md:max-w-md'}>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}>
+                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}
+                    style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     Fish left: {numberOfCritters - numberOfCrittersEaten()}
                   </p>
                   {buffsJsx()}
