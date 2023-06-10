@@ -11,19 +11,20 @@ import {
   Graphics,
   MSAA_QUALITY,
   Sprite,
-  Text,
   Texture,
 } from 'pixi.js';
 import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 
-import charTextures from '../assets/CharTextures';
-import {Character, getCharacter, Speed} from '../models/Character';
+import {CritterTextureMap, getCritterTextures, getPlayerTextures, PlayerTextureMap} from '../assets/CharTextures';
+import {Character, getCharacter, MovementDirection, Speed} from '../models/Character';
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {Coords} from '../models/Coords';
 import {
   generateCorridors,
-  generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificCorridor,
-  generateRandomCoordsInSpecificRoom, generateRooms,
+  generateRandomCoordsInRandomRoom,
+  generateRandomCoordsInSpecificCorridor,
+  generateRandomCoordsInSpecificRoom,
+  generateRooms,
 } from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
@@ -39,29 +40,6 @@ import EnterButton from './EnterButton';
 //   // TODO: add props
 // }
 
-export interface CharacterTextureMap {
-  lookingAround: {
-    north: Texture[],
-    northeast: Texture[],
-    east: Texture[],
-    southeast: Texture[],
-    south: Texture[],
-    southwest: Texture[],
-    west: Texture[],
-    northwest: Texture[],
-  },
-  running: {
-    north: Texture[],
-    northeast: Texture[],
-    east: Texture[],
-    southeast: Texture[],
-    south: Texture[],
-    southwest: Texture[],
-    west: Texture[],
-    northwest: Texture[],
-  }
-}
-
 export default function GridMapSquarePixi(): JSXElement {
   // These settings are not user-configurable
   const cellWidth = 45;
@@ -71,8 +49,10 @@ export default function GridMapSquarePixi(): JSXElement {
   const numberOfCritters = 5;
   const baseSpotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
   let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
-  const baseRunningFps = 7 / 20;
-  const baseLookingAroundFps = 5 / 250;
+  const playerBaseRunningFps = 7 / 20;
+  const playerBaseLookingAroundFps = 5 / 250;
+  const critterBaseRunningFps = 4 / 20;
+  const critterBaseLookingAroundFps = 6 / 50;
   // End "These settings are not user-configurable"
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
@@ -109,12 +89,14 @@ export default function GridMapSquarePixi(): JSXElement {
 
   let player: Character;
   let playerSprite: AnimatedSprite;
-  let characterTextures: CharacterTextureMap;
+  let playerTextures: PlayerTextureMap;
   const playerCoordObservers: Graphics[] = [];
 
+
   const critters: Character[] = [];
-  const critterSprites: { id: UUID, sprite: Sprite }[] = []; // TODO: replace with animated sprites
+  const critterSprites: { id: UUID, sprite: AnimatedSprite }[] = []; // TODO: replace with animated sprites
   const crittersEaten: Character['id'][] = [];
+  let critterTextures: CritterTextureMap;
   let critterBehaviour: (critter: Character, playerInstance: Character) => void;
 
   const ghosts: { instance: Character, sprite: Sprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
@@ -156,7 +138,7 @@ export default function GridMapSquarePixi(): JSXElement {
       return;
     }
 
-    await delay(randomInt(25, 50));
+    await delay(randomInt(15, 35));
 
     setLineTwo(line => line + content.pop());
 
@@ -169,7 +151,7 @@ export default function GridMapSquarePixi(): JSXElement {
       return;
     }
 
-    await delay(randomInt(25, 50));
+    await delay(randomInt(15, 35));
 
     setLineOne(line => line + content.pop());
 
@@ -269,11 +251,11 @@ export default function GridMapSquarePixi(): JSXElement {
     const light3 = new Graphics();
     playerCoordObservers.push(light, light2, light3);
 
-    const charLookingAroundTextures = await Assets.loadBundle('character-looking-around');
-    const charRunningTextures = await Assets.loadBundle('character-running');
-    characterTextures = charTextures(charLookingAroundTextures, charRunningTextures);
-    playerSprite = new AnimatedSprite(characterTextures.lookingAround.south, true);
-    playerSprite.animationSpeed = baseLookingAroundFps; // TODO: extract this as a constant.
+    const playerLookingAroundTextures = await Assets.loadBundle('player-looking-around');
+    const playerRunningTextures = await Assets.loadBundle('player-running');
+    playerTextures = getPlayerTextures(playerLookingAroundTextures, playerRunningTextures);
+    playerSprite = new AnimatedSprite(playerTextures.lookingAround.south, true);
+    playerSprite.animationSpeed = playerBaseLookingAroundFps;
     playerSprite.play();
     playerSprite.width = cellWidth;
     playerSprite.height = cellWidth;
@@ -320,14 +302,70 @@ export default function GridMapSquarePixi(): JSXElement {
 
       if (!critterInstance.isAlive) {
         // critterSprite.sprite.tint = 'grey';
-        critterSprite.sprite.alpha = 0;
+        critterSprite.sprite.alpha = 1;
         ssmb.removeSubscriber(critterInstance.id);
         return;
       }
 
       // Animate critter sprite
-      critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth / 4;
-      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth / 4;
+      const ms = critterInstance.movementState;
+      const runningFpsDivider = critterInstance.movementState.speed.ms / critterSpeed.ms;
+      const fps = ms.action === 'running' ?
+        critterBaseRunningFps * runningFpsDivider :
+        critterBaseLookingAroundFps; // has to be a multiple of the number of textures.
+
+      if (ms.action === 'running') {
+        switch (ms.direction) {
+        case MovementDirection.N:
+        case MovementDirection.NW:
+        case MovementDirection.W:
+          critterSprite.sprite.textures = critterTextures.running.north;
+          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(0, 0);
+          break;
+        case MovementDirection.NE:
+        case MovementDirection.E:
+          critterSprite.sprite.textures = critterTextures.running.north;
+          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          break;
+        case MovementDirection.S:
+        case MovementDirection.SW:
+          critterSprite.sprite.textures = critterTextures.running.south;
+          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(0, 0);
+          break;
+        case MovementDirection.SE:
+          critterSprite.sprite.textures = critterTextures.running.south;
+          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          break;
+        }
+      } else {
+        switch (ms.direction) {
+        case MovementDirection.N:
+        case MovementDirection.NW:
+        case MovementDirection.W:
+        case MovementDirection.S:
+        case MovementDirection.SW:
+          critterSprite.sprite.textures = critterTextures.lookingAround;
+          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(0, 0);
+          break;
+        case MovementDirection.NE:
+        case MovementDirection.E:
+        case MovementDirection.SE:
+          critterSprite.sprite.textures = critterTextures.lookingAround;
+          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          break;
+        }
+      }
+
+      critterSprite.sprite.animationSpeed = fps;
+      critterSprite.sprite.play();
+      critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
+      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth/4;
 
 
       // TODO: extract this whole method
@@ -338,7 +376,7 @@ export default function GridMapSquarePixi(): JSXElement {
       );
 
       if (distanceToPlayer >= spotLightRadius) {
-        critterSprite.sprite.alpha = 0;
+        critterSprite.sprite.alpha = 1;
         critterInstance.setIsTriggered(false);
         critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
         // critterSprite.sprite.tint = 'red';
@@ -428,7 +466,7 @@ export default function GridMapSquarePixi(): JSXElement {
         );
 
         if (distanceToPlayer >= spotLightRadius) {
-          critterSprite.sprite.alpha = 0;
+          critterSprite.sprite.alpha = 1;
           critterSprite.sprite.tint = new Color('rgb(255,142,155)');
           critterInstance.setIsTriggered(false);
 
@@ -508,6 +546,14 @@ export default function GridMapSquarePixi(): JSXElement {
       }
     };
 
+    // Generate critters
+    const critterLookingAroundTextures = await Assets.loadBundle('blobfish-looking-around');
+    const critterRunningTextures = await Assets.loadBundle('blobfish-running');
+    critterTextures = getCritterTextures(
+      critterLookingAroundTextures,
+      critterRunningTextures,
+    );
+
     for (let i = 0; i < numberOfCritters; i++) {
       const randomCritterStartingCoords = generateRandomCoordsInRandomRoom(generatedRooms, {x: player.x, y: player.y});
       const critterPathFinder = getPathfinder(generatedGrid, {allowDiagonalMovement: false});
@@ -519,20 +565,14 @@ export default function GridMapSquarePixi(): JSXElement {
 
       critters.push(critter);
 
-      const critterTexture = Texture.WHITE;
-      const critterSprite = new Sprite(critterTexture);
-      critterSprite.tint = new Color('rgb(255,142,155)');
-      critterSprite.width = cellWidth / 2;
-      critterSprite.height = cellWidth / 2;
-      critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth / 4; // TODO: use the sprite's width here?
-      critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth / 4;
+      const critterSprite = new AnimatedSprite(critterTextures.lookingAround, true);
+      critterSprite.animationSpeed = critterBaseLookingAroundFps;
+      critterSprite.play();
+      critterSprite.width = cellWidth/2;
+      critterSprite.height = cellWidth/2;
+      critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth/4;
+      critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth/4;
       critterSprite.alpha = 0;
-
-      const text = new Text(i, {fontSize: 10, align: 'center'});
-      text.x = critterSprite.width / 5;
-      text.y = critterSprite.width / 8;
-
-      critterSprite.addChild(text);
 
       container.addChild(critterSprite);
 
@@ -553,27 +593,33 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: playerInstance.x, y: playerInstance.y},
         );
 
-        const speed = {...critterSpeed};
-        if (critter.isTriggered) {
-          speed.ms *= 0.5;
-          await critter.moveTo(
-            generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
-            speed,
-            critter.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y),
-          );
-        } else {
-          await critter.moveTo(
-            generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
-            speed,
-          );
-        }
+        if (!critter.willMeet(playerInstance)) {
+          const speed = {...critterSpeed};
 
-        // Once destination was reached, wait 1 second plus a jitter before moving again.
-        await delay(randomInt(500, 2000));
+          if (critter.isTriggered) {
+            speed.ms *= 0.5;
+            await critter.moveTo(
+              generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
+              speed,
+              critter.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y),
+            );
+          } else {
+            await critter.moveTo(
+              generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
+              speed,
+            );
+          }
+
+          // Once destination was reached, wait 1 second plus a jitter before moving again.
+          await delay(randomInt(2500, 4000));
+        } else {
+          await delay(randomInt(150, 350));
+        }
       } else {
-        await delay(1500);
-        await critterBehaviour(critter, playerInstance);
+        await delay(randomInt(400, 600));
       }
+
+      await critterBehaviour(critter, playerInstance);
     };
     // End "Critter stuff"
 
@@ -856,9 +902,9 @@ export default function GridMapSquarePixi(): JSXElement {
 
       // Animate player sprite
       const ms = playerInstance.movementState;
-      const runningFpsDivider = baseRunningFps / (1 + numberOfCrittersEaten() / 30);
-      const fps = ms.action === 'running' ? runningFpsDivider : baseLookingAroundFps; // has to be a multiple of the number of textures.
-      playerSprite.textures = characterTextures[ms.action][ms.direction];
+      const runningFpsDivider = playerBaseRunningFps / (1 + numberOfCrittersEaten() / 30);
+      const fps = ms.action === 'running' ? runningFpsDivider : playerBaseLookingAroundFps; // has to be a multiple of the number of textures.
+      playerSprite.textures = playerTextures[ms.action][ms.direction];
       playerSprite.animationSpeed = fps;
       playerSprite.play();
       playerSprite.x = player.x * playerSpeed.px;
@@ -941,7 +987,7 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     for (const ghost of ghosts) {
-      ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
+      // ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
     }
 
     setIsGameStarted(true);

@@ -17,7 +17,7 @@ export const DEFAULT_SPEED: Speed = {
   ms: 300, // Lower is faster.
 };
 
-enum MovementDirection {
+export enum MovementDirection {
   // TODO: Implement directional combinations to use with Diagonal heuristics.
   N = 'north',
   NE = 'northeast',
