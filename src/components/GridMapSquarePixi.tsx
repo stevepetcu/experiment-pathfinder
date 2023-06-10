@@ -606,6 +606,7 @@ export default function GridMapSquarePixi(): JSXElement {
         ghostSprite.alpha = 1;
       }
       if (distanceToPlayer < spotLightRadius * 0.1 && ghostInstance.instance.isAlive) {
+        // TODO: set player dead and show game over screen with a joke about 9 lives.
         console.log(`Ghost ${ghostInstance.instance.id} caught the player!`);
         // TODO: If the ghost meets the player, do things.
       }
@@ -670,7 +671,7 @@ export default function GridMapSquarePixi(): JSXElement {
       player: { instance: Character, sprite: Sprite },
       critters,
     ) => {
-      if (!critters.some(critter => critter.isAlive)) {
+      if (!critters.some(critter => critter.isAlive) || !player.instance.isAlive) {
         return;
       }
 
@@ -736,10 +737,10 @@ export default function GridMapSquarePixi(): JSXElement {
       // Try to anticipate the player's movement
       const ghostTargetCoords: Coords = {
         x: playerInstance.x + (playerInstance.movementState.action === 'running' ?
-          playerInstance.movementState.vectorX :
+          playerInstance.movementState.vectorX * randomInt(1, 3) :
           0),
         y: playerInstance.y + (playerInstance.movementState.action === 'running' ?
-          playerInstance.movementState.vectorY :
+          playerInstance.movementState.vectorY * randomInt(1, 3) :
           0),
       };
 
@@ -939,9 +940,9 @@ export default function GridMapSquarePixi(): JSXElement {
       critterBehaviour(critter, player);
     }
 
-    // for (const ghost of ghosts) {
-    //   ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
-    // }
+    for (const ghost of ghosts) {
+      ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
+    }
 
     setIsGameStarted(true);
     playTimeTracker = setInterval(() => {
