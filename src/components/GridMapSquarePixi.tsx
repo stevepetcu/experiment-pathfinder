@@ -127,14 +127,31 @@ export default function GridMapSquarePixi(): JSXElement {
   const [lineOne, setLineOne] = createSignal('');
   const [finishedTypingLineOne, setFinishedTypingLineOne] = createSignal(false);
 
-  const lineTwoContent = 'Don\'t linger. There are other hungry things besides you.'.split('').reverse();
+  const lineTwoContent = 'Don\'t linger.'.split('').reverse();
   const [lineTwo, setLineTwo] = createSignal('');
   const [finishedTypingLineTwo, setFinishedTypingLineTwo] = createSignal(false);
 
+  const lineThreeContent = 'There are other hungry things besides you.'.split('').reverse();
+  const [lineThree, setLineThree] = createSignal('');
+  const [finishedTypingLineThree, setFinishedTypingLineThree] = createSignal(false);
+
+  const typeLineThree = async (content: string[]) => {
+    if (content.length === 0) {
+      setFinishedTypingLineThree(true);
+      return;
+    }
+
+    await delay(randomInt(15, 35));
+
+    setLineThree(line => line + content.pop());
+
+    await typeLineThree(content);
+  };
 
   const typeLineTwo = async (content: string[]) => {
     if (content.length === 0) {
       setFinishedTypingLineTwo(true);
+      typeLineThree(lineThreeContent);
       return;
     }
 
@@ -296,9 +313,9 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      if (critterInstance.isTriggered) {
-        critterSprite.sprite.tint = 'red';
-      }
+      // if (critterInstance.isTriggered) {
+      //   critterSprite.sprite.tint = 'red';
+      // }
 
       if (!critterInstance.isAlive) {
         // critterSprite.sprite.tint = 'grey';
@@ -391,7 +408,7 @@ export default function GridMapSquarePixi(): JSXElement {
         // critterSprite.sprite.tint = 'yellow';
       }
       if (distanceToPlayer < spotLightRadius * 0.5) {
-        critterSprite.sprite.tint = 'blue';  // TODO: use the frowning fish texture?
+        // critterSprite.sprite.tint = 'blue';
 
         if (
           // player.movementState.action === 'lookingAround'
@@ -482,7 +499,7 @@ export default function GridMapSquarePixi(): JSXElement {
           // critterSprite.sprite.tint = 'yellow';
         }
         if (distanceToPlayer < spotLightRadius * 0.5) {
-          critterSprite.sprite.tint = 'blue'; // TODO: use the frowning fish texture?
+          // critterSprite.sprite.tint = 'blue';
 
           if (
             critterInstance.movementState.action === 'running'
@@ -1067,9 +1084,6 @@ export default function GridMapSquarePixi(): JSXElement {
                    'grid grid-cols-1 content-center z-30 '}>
               <div class={'w-1/2 text-left fixed bottom-[60%] left-1/4'}>
                 <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
-                  {
-                    !finishedTypingLineOne() && <span class={'animate-pulse absolute -left-5'}>&gt; </span>
-                  }
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineOne()}
                   </span>
@@ -1078,15 +1092,20 @@ export default function GridMapSquarePixi(): JSXElement {
                   }
                 </p>
                 <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
-                  {
-                    finishedTypingLineOne() && <span class={'animate-pulse absolute -left-5'}>&gt; </span>
-                  }
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineTwo()}
                   </span>
-                  { finishedTypingLineOne() &&
+                  { finishedTypingLineOne() && !finishedTypingLineTwo() &&
+                    <span>_</span>
+                  }
+                </p>
+                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                    {lineThree()}
+                  </span>
+                  { finishedTypingLineOne() && finishedTypingLineThree() &&
                     <span classList={{
-                      'animate-pulse': finishedTypingLineTwo(),
+                      'animate-pulse-fast': finishedTypingLineThree(),
                     }}>_</span>
                   }
                 </p>
@@ -1094,7 +1113,7 @@ export default function GridMapSquarePixi(): JSXElement {
               <div class={'grid grid-cols-1 gap-8 content-center'}>
                 {
                   <EnterButton onClick={() => startGame()}
-                    isDisabled={!(finishedLoading() && finishedTypingLineTwo())} />
+                    isDisabled={!(finishedLoading() && finishedTypingLineThree())} />
                 }
               </div>
             </div>
