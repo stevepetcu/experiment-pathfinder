@@ -12,7 +12,7 @@ import {
   Sprite,
   Texture,
 } from 'pixi.js';
-import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
+import {createEffect, createSignal, JSXElement, onCleanup, onMount, Setter, Show} from 'solid-js';
 
 import {
   CritterTextureMap,
@@ -39,10 +39,6 @@ import {formatSeconds} from '../utils/Time';
 import BuffsDisplay from './BuffsDisplay';
 import EnterButton from './EnterButton';
 
-// interface GridMapSquareProps {
-//   // TODO: add props
-// }
-
 export default function GridMapSquarePixi(): JSXElement {
   // These settings are not user-configurable
   const cellWidth = 45;
@@ -50,8 +46,8 @@ export default function GridMapSquarePixi(): JSXElement {
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
-  const baseSpotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
-  let spotLightRadius = cellWidth * 6; // TODO: make this smaller on mobile?
+  const baseSpotLightRadius = cellWidth * 6;
+  let spotLightRadius = cellWidth * 6;
   const playerBaseRunningFps = 7 / 20;
   const playerBaseLookingAroundFps = 5 / 250;
   const critterBaseRunningFps = 4 / 20;
@@ -62,14 +58,17 @@ export default function GridMapSquarePixi(): JSXElement {
   // End "These settings are not user-configurable"
 
   document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || event.key !== 'Enter') {
       return; // Do nothing if the event was already processed.
     }
 
-    if (event.key === 'Enter' && finishedLoading() && (!isGameStarted() || !player.isAlive)) {
-      event.preventDefault();
+    if (finishedLoading() &&  !isGameOver()) {
       startGame();
+    } else if (finishedLoading() && isGameOver()) {
+      restartGame();
     }
+
+    event.preventDefault();
   }, true);
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
@@ -120,14 +119,13 @@ export default function GridMapSquarePixi(): JSXElement {
   let ghostTextures: GhostTextureMap;
   const numberOfGhosts = 2;
   const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000}; // TODO: increase these numbers.
-  const subsequentGhostMsWaitUntilSpawn = {base: 5000, jitter: 1000}; // TODO: increase these numbers.
+  const subsequentGhostMsWaitUntilSpawn = {base: 6000, jitter: 1000}; // TODO: increase these numbers.
   let ghostBehaviour: (
     ghost: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }, // TODO: replace with animated sprites
     player: { instance: Character, sprite: AnimatedSprite },
   ) => void;
 
   const playerBuffs: CharacterBuff[] = [];
-  // const [pb, setPb] = createSignal<CharacterBuff[]>([]); // TODO figure out why this doesn't update.
   const [buffsJsx, setBuffsJsx] = createSignal(<BuffsDisplay buffs={[]}/>);
   const [numberOfCrittersEaten, setNumberOfCrittersEaten] = createSignal(0);
 
@@ -152,50 +150,59 @@ export default function GridMapSquarePixi(): JSXElement {
   const [lineThree, setLineThree] = createSignal('');
   const [finishedTypingLineThree, setFinishedTypingLineThree] = createSignal(false);
 
-  const typeLineThree = async (content: string[]) => {
+  const lineGameLostContent = 'YOU DIED.'.split('').reverse();
+  const [lineGameLost, setLineGameLost] = createSignal('');
+  const [finishedTypingLineGameLost, setFinishedTypingLineGameLost] = createSignal(false);
+
+  const typeLine = async (
+    content: string[],
+    lineSetter: Setter<string>,
+    finishedTypingSetter: Setter<boolean>,
+    nextLineCallback?: () => void,
+  ) => {
     if (content.length === 0) {
-      setFinishedTypingLineThree(true);
+      finishedTypingSetter(true);
+      if (nextLineCallback) {
+        nextLineCallback();
+      }
       return;
     }
 
-    await delay(randomInt(15, 35));
+    await delay(randomInt(5, 75));
 
-    setLineThree(line => line + content.pop());
+    lineSetter(line => line + content.pop());
 
-    await typeLineThree(content);
-  };
-
-  const typeLineTwo = async (content: string[]) => {
-    if (content.length === 0) {
-      setFinishedTypingLineTwo(true);
-      typeLineThree(lineThreeContent);
-      return;
-    }
-
-    await delay(randomInt(15, 35));
-
-    setLineTwo(line => line + content.pop());
-
-    await typeLineTwo(content);
-  };
-  const typeLineOne = async (content: string[]) => {
-    if (content.length === 0) {
-      setFinishedTypingLineOne(true);
-      typeLineTwo(lineTwoContent);
-      return;
-    }
-
-    await delay(randomInt(15, 35));
-
-    setLineOne(line => line + content.pop());
-
-    await typeLineOne(content);
+    await typeLine(content,
+      lineSetter,
+      finishedTypingSetter,
+      nextLineCallback);
   };
 
   const [isGameStarted, setIsGameStarted] = createSignal(false);
+  const [isGameLost, setIsGameLost] = createSignal(false);
+  const [isGameWon, setIsGameWon] = createSignal(false);
+  const [isGameOver, setIsGameOver] = createSignal(false);
 
   onMount(async () => {
-    typeLineOne(lineOneContent);
+    typeLine(
+      lineOneContent,
+      setLineOne,
+      setFinishedTypingLineOne,
+      () => {
+        typeLine(
+          lineTwoContent,
+          setLineTwo,
+          setFinishedTypingLineTwo,
+          () => {
+            typeLine(
+              lineThreeContent,
+              setLineThree,
+              setFinishedTypingLineThree,
+            );
+          },
+        );
+      },
+    );
     // Create the actual grid:
     const generatedGrid = await getSquareGrid(mapWidth);
 
@@ -315,7 +322,7 @@ export default function GridMapSquarePixi(): JSXElement {
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
     // Critter stuff
     const critterUIUpdater = (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
-      if (!playerSprite) {
+      if (!playerSprite || isGameOver()) {
         return;
       }
 
@@ -439,7 +446,10 @@ export default function GridMapSquarePixi(): JSXElement {
         if (!crittersEaten.includes(critterInstance.id)) {
           critterInstance.setIsAlive(false);
           crittersEaten.push(critterInstance.id);
+
           setNumberOfCrittersEaten(n => n + 1);
+          setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
+          setIsGameOver(isGameWon());
 
           const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
           if (blobFishBuffIndex < 0) {
@@ -464,7 +474,6 @@ export default function GridMapSquarePixi(): JSXElement {
           spotLightRadius = baseSpotLightRadius * sightBoost;
 
           setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
-          // setPb(playerBuffs);
 
           critterSprite.sprite.destroy();
         }
@@ -472,7 +481,7 @@ export default function GridMapSquarePixi(): JSXElement {
     };
 
     const playerUpdaterForCritters = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!playerInstance.isAlive) {
+      if (!playerInstance.isAlive || isGameOver()) {
         return;
       }
 
@@ -541,10 +550,13 @@ export default function GridMapSquarePixi(): JSXElement {
           if (!crittersEaten.includes(critterInstance.id)) {
             critterInstance.setIsAlive(false);
             crittersEaten.push(critterInstance.id);
+
             // Could also be "setNumberOfCrittersEaten(n => ++n);"
             // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
             // setNumberOfCrittersEaten(n => n++); - b/c n++ returns before it adds? Spent 30 min debugging that 💩.
             setNumberOfCrittersEaten(n => n + 1);
+            setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
+            setIsGameOver(isGameWon());
 
             const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
             if (blobFishBuffIndex < 0) {
@@ -569,7 +581,6 @@ export default function GridMapSquarePixi(): JSXElement {
             spotLightRadius = baseSpotLightRadius * sightBoost;
 
             setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
-            // setPb(playerBuffs);
 
             critterSprite.sprite.destroy();
           }
@@ -614,7 +625,7 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     critterBehaviour = async (critter: Character, playerInstance: Character) => {
-      if (!critter.isAlive) {
+      if (!critter.isAlive || isGameOver()) {
         return;
       }
 
@@ -656,6 +667,10 @@ export default function GridMapSquarePixi(): JSXElement {
 
     // Ghosts stuff
     const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
+      if (isGameOver()) {
+        return;
+      }
+
       const ghostInstance = ghosts.find(g => g.instance.id === ghost.id);
 
       if (!ghostInstance) {
@@ -701,12 +716,20 @@ export default function GridMapSquarePixi(): JSXElement {
         ghostSprite.alpha = 1;
       }
       if (distanceToPlayer < spotLightRadius * 0.1 && ghostInstance.instance.isAlive) {
+        console.log('Player caught.');
         player.setIsAlive(false);
+        setIsGameLost(true);
+        typeLine(
+          lineGameLostContent,
+          setLineGameLost,
+          setFinishedTypingLineGameLost,
+        );
+        setIsGameOver(isGameLost());
       }
     };
 
     const playerUpdaterForGhosts = async (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!playerInstance.isAlive) {
+      if (!playerInstance.isAlive || isGameOver()) {
         return;
       }
 
@@ -728,7 +751,15 @@ export default function GridMapSquarePixi(): JSXElement {
           ghostSprite.alpha = 1;
         }
         if (distanceToPlayer < spotLightRadius * 0.1 && ghost.instance.isAlive) {
+          console.log('Player caught.');
           player.setIsAlive(false);
+          setIsGameLost(true);
+          typeLine(
+            lineGameLostContent,
+            setLineGameLost,
+            setFinishedTypingLineGameLost,
+          );
+          setIsGameOver(isGameLost());
         }
       }
     };
@@ -771,7 +802,7 @@ export default function GridMapSquarePixi(): JSXElement {
       ghost: { instance: Character, msWaitUntilSpawn: number, sprite: AnimatedSprite, speed: Speed },
       player: { instance: Character, sprite: AnimatedSprite },
     ) => {
-      if (numberOfCrittersEaten() === numberOfCritters || !player.instance.isAlive) {
+      if (isGameOver()) {
         return;
       }
 
@@ -835,6 +866,10 @@ export default function GridMapSquarePixi(): JSXElement {
       // Play ghost spawn animation.
       ghostSprite.textures = ghostTextures.spawn;
       ghostSprite.gotoAndPlay(0);
+      ghostSprite.onComplete = () => {
+        // When animation completes, ghost is able to kill the player.
+        ghostInstance.setIsAlive(true);
+      };
       await delay(ghostBaseSpawnDuration + randomInt(0, 1000));
 
       // Try to anticipate the player's movement
@@ -849,25 +884,23 @@ export default function GridMapSquarePixi(): JSXElement {
 
       const ghostTargetCell = ghostInstance.pathfinder.getGridCellAt(ghostTargetCoords.x, ghostTargetCoords.y);
 
-      ghostInstance.setIsAlive(true);
       ghostSprite.textures = ghostTextures.running;
       ghostSprite.animationSpeed = ghostBaseRunningFps;
       ghostSprite.gotoAndPlay(0);
       await ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
 
       // Play ghost de-spawn animation.
-      ghostInstance.setIsAlive(false); // Ghost will not kill the player anymore.
       await delay(300 + randomInt(50, 200));
       ghostSprite.textures = ghostTextures.despawn;
       ghostSprite.gotoAndPlay(0);
+      ghostInstance.setIsAlive(false); // Ghost will not kill the player anymore.
 
-      await delay(ghostBaseSpawnDuration + randomInt(0, 1000));
       const newGhostSpawnWait = randomInt(
         subsequentGhostMsWaitUntilSpawn.base,
         subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
       );
 
-      subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base - 500, 2000);
+      subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base - 300, 1500);
       subsequentGhostMsWaitUntilSpawn.jitter - Math.floor(subsequentGhostMsWaitUntilSpawn.jitter * 0.9);
 
       // TODO: make the ghost slightly faster - probably add a speed param to this function and remove the "base" ghost speed.
@@ -957,7 +990,7 @@ export default function GridMapSquarePixi(): JSXElement {
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
 
     const playerUIUpdater = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
-      if (!playerSprite || !playerInstance.isAlive) {
+      if (!playerSprite || !playerInstance.isAlive || isGameOver()) {
         return;
       }
 
@@ -1012,7 +1045,6 @@ export default function GridMapSquarePixi(): JSXElement {
           player.movementState.speed = playerSpeed;
 
           setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
-          // setPb(playerBuffs);
 
           canOfMilkSprite.destroy();
         }
@@ -1032,10 +1064,16 @@ export default function GridMapSquarePixi(): JSXElement {
     setFinishedLoading(true);
   });
 
-  onCleanup(() => {
+  const destroyPixiApp = () => {
     console.debug('Destroying app…');
+    setIsGameOver(true);
     pixiApp().stage.destroy({children: true, texture: true, baseTexture: true}); // Should not be needed but…
     pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
+  };
+
+  onCleanup(() => {
+    setIsGameOver(true);
+    destroyPixiApp();
   });
 
   const startGame = () => {
@@ -1053,7 +1091,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     setIsGameStarted(true);
     playTimeTracker = setInterval(() => {
-      if (numberOfCrittersEaten() !== numberOfCritters) {
+      if (numberOfCrittersEaten() !== numberOfCritters && player.isAlive) {
         setPlayTime(pt => pt + 1);
       } else {
         clearInterval(playTimeTracker);
@@ -1066,6 +1104,10 @@ export default function GridMapSquarePixi(): JSXElement {
       left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
       top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
     });
+  };
+
+  const restartGame = () => {
+    location.reload();
   };
 
   const movePlayerTo = async (cell: GridCell) => {
@@ -1082,9 +1124,13 @@ export default function GridMapSquarePixi(): JSXElement {
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
 
-  // TODO:
-  //  1. Use Tailwind classes everywhere.
-  //  2. Implement tests.
+  createEffect(() => {
+    if (isGameOver()) {
+      console.debug('Game over.');
+      destroyPixiApp();
+    }
+  });
+
   return (
     <div class={'text-center'}>
       <Show when={false}> {/*TODO: these will be in the "debug" menu.*/}
@@ -1097,23 +1143,6 @@ export default function GridMapSquarePixi(): JSXElement {
         <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       </Show>
       <div class={'relative inline-block'}>
-        {
-          numberOfCrittersEaten() === numberOfCritters &&
-          <>
-            <div class={'absolute top-0 left-0 w-full h-full z-10 '}
-              style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
-                   '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
-                   'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
-            <div class={'absolute top-0 left-0 bg-slate-800/50 w-full h-full ' +
-              'grid grid-cols-1 gap-8 content-center z-30 '}>
-              <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
-                style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                Congrats, you're full! *burp* Play again?
-              </p>
-              <EnterButton onClick={() => location.reload()} isDisabled={false} />
-            </div>
-          </>
-        }
         <div id="grid-scrollable-container"
           class={'inline-block w-screen h-screen'}
           classList={{
@@ -1121,6 +1150,51 @@ export default function GridMapSquarePixi(): JSXElement {
             'overflow-hidden': !isGameStarted(),
           }}
         >
+          {
+            isGameWon() &&
+            <>
+              <div class={'absolute top-0 left-0 w-full h-full z-10 '}
+                style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
+                     '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
+                     'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
+              <div class={'absolute top-0 left-0 bg-slate-800/50 w-full h-full ' +
+                'grid grid-cols-1 gap-8 content-center z-30 '}>
+                <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
+                  style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                  Congrats, you're full! *burp* Play again?
+                </p>
+                <EnterButton onClick={() => restartGame()} isDisabled={false} />
+              </div>
+            </>
+          }
+          {
+            isGameLost() &&
+            <div class={'bg-slate-800 h-full w-full ' +
+              'grid grid-cols-1 content-center z-30 '}>
+              <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
+                <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
+                  <div class={'flex-none'}>
+                    <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                        {lineGameLost()}
+                      </span>
+                      <span classList={{
+                        'animate-pulse-fast': finishedTypingLineGameLost(),
+                      }}>_</span>
+                    </p>
+                  </div>
+                  <div class={'transition-opacity -mt-6'}
+                    classList={{
+                      'opacity-0': !finishedTypingLineGameLost(),
+                      'opacity-100': finishedTypingLineGameLost(),
+                    }}>
+                    <EnterButton onClick={() => restartGame()}
+                      isDisabled={!(isGameLost() && finishedTypingLineGameLost())} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
           {
             (!finishedLoading() || !isGameStarted()) &&
             <div class={'bg-slate-800 h-full w-full ' +
@@ -1168,7 +1242,7 @@ export default function GridMapSquarePixi(): JSXElement {
             </div>
           }
           {
-            finishedLoading() && isGameStarted() &&
+            finishedLoading() && isGameStarted() && !isGameOver() &&
             <>
               <div class={'absolute top-5 left-[3%] text-left z-20 ' +
                 'p-3 rounded bg-slate-700/30 ' +
@@ -1185,7 +1259,6 @@ export default function GridMapSquarePixi(): JSXElement {
                     Fish left: {numberOfCritters - numberOfCrittersEaten()}
                   </p>
                   {buffsJsx()}
-                  {/*<BuffsDisplay buffs={pb()}/>*/}
                 </div>
               </div>
               <div style={{
