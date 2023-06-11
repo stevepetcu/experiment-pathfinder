@@ -31,6 +31,58 @@ export interface CritterTextureMap {
   }
 }
 
+export interface GhostTextureMap {
+  spawn: Texture[],
+  despawn: Texture[],
+  running: Texture[],
+}
+
+export function getGhostTextures(
+  ghostLookingAroundTextures: { [key: string]: Texture },
+  ghostRunningTextures: { [key: string]: Texture },
+): GhostTextureMap {
+  return {
+    spawn: [
+      ghostLookingAroundTextures['frame_00'],
+      ghostLookingAroundTextures['frame_01'],
+      ghostLookingAroundTextures['frame_02'],
+      ghostLookingAroundTextures['frame_03'],
+      ghostLookingAroundTextures['frame_04'],
+      ghostLookingAroundTextures['frame_05'],
+      ghostLookingAroundTextures['frame_06'],
+      ghostLookingAroundTextures['frame_07'],
+      ghostLookingAroundTextures['frame_08'],
+      ghostLookingAroundTextures['frame_09'],
+      ghostLookingAroundTextures['frame_10'],
+      ghostLookingAroundTextures['frame_11'],
+      ghostLookingAroundTextures['frame_12'],
+    ],
+    despawn: [
+      ghostLookingAroundTextures['frame_12'],
+      ghostLookingAroundTextures['frame_11'],
+      ghostLookingAroundTextures['frame_10'],
+      ghostLookingAroundTextures['frame_09'],
+      ghostLookingAroundTextures['frame_08'],
+      ghostLookingAroundTextures['frame_07'],
+      ghostLookingAroundTextures['frame_06'],
+      ghostLookingAroundTextures['frame_05'],
+      ghostLookingAroundTextures['frame_04'],
+      ghostLookingAroundTextures['frame_03'],
+      ghostLookingAroundTextures['frame_02'],
+      ghostLookingAroundTextures['frame_01'],
+      Texture.EMPTY,
+    ],
+    running: [
+      ghostRunningTextures['running_00'],
+      ghostRunningTextures['running_01'],
+      ghostRunningTextures['running_02'],
+      ghostRunningTextures['running_03'],
+      ghostRunningTextures['running_04'],
+      ghostRunningTextures['running_05'],
+    ],
+  };
+}
+
 export function getCritterTextures(
   critterLookingAroundTextures: { [key: string]: Texture },
   critterRunningTextures: { [key: string]: Texture },

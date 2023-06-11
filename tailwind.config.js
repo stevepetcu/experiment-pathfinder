@@ -9,7 +9,7 @@ module.exports = {
         'vt323': ['VT323', 'serif'],
       },
       animation: {
-        'pulse-fast': 'pulse-fast 1.25s steps(1, end) infinite',
+        'pulse-fast': 'pulse-fast 1s steps(1, end) infinite',
       },
       keyframes: {
         'pulse-fast': {

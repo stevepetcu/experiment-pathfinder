@@ -6,7 +6,6 @@ import {
   Application,
   Assets,
   BLEND_MODES,
-  Color,
   Container,
   Graphics,
   MSAA_QUALITY,
@@ -15,15 +14,19 @@ import {
 } from 'pixi.js';
 import {createSignal, JSXElement, onCleanup, onMount, Show} from 'solid-js';
 
-import {CritterTextureMap, getCritterTextures, getPlayerTextures, PlayerTextureMap} from '../assets/CharTextures';
+import {
+  CritterTextureMap,
+  getCritterTextures, getGhostTextures,
+  getPlayerTextures,
+  GhostTextureMap,
+  PlayerTextureMap,
+} from '../assets/CharTextures';
 import {Character, getCharacter, MovementDirection, Speed} from '../models/Character';
 import {BuffName, CharacterBuff, getBlobfishBuff, getMilkCanBuff} from '../models/CharacterBuff';
 import {Coords} from '../models/Coords';
 import {
   generateCorridors,
-  generateRandomCoordsInRandomRoom,
-  generateRandomCoordsInSpecificCorridor,
-  generateRandomCoordsInSpecificRoom,
+  generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificRoom,
   generateRooms,
 } from '../models/Map';
 import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
@@ -53,7 +56,21 @@ export default function GridMapSquarePixi(): JSXElement {
   const playerBaseLookingAroundFps = 5 / 250;
   const critterBaseRunningFps = 4 / 20;
   const critterBaseLookingAroundFps = 6 / 50;
+  const ghostBaseRunningFps = 6 / 20;
+  const ghostBaseSpawnDuration = 3000;
+  const ghostBaseSpawningFps = 13 / 130;
   // End "These settings are not user-configurable"
+
+  document.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented) {
+      return; // Do nothing if the event was already processed.
+    }
+
+    if (event.key === 'Enter' && finishedLoading() && (!isGameStarted() || !player.isAlive)) {
+      event.preventDefault();
+      startGame();
+    }
+  }, true);
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
   //  Just pick one of them, since they must always be equal.
@@ -99,14 +116,14 @@ export default function GridMapSquarePixi(): JSXElement {
   let critterTextures: CritterTextureMap;
   let critterBehaviour: (critter: Character, playerInstance: Character) => void;
 
-  const ghosts: { instance: Character, sprite: Sprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
+  const ghosts: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
+  let ghostTextures: GhostTextureMap;
   const numberOfGhosts = 2;
-  const initialGhostMsWaitUntilSpawn = {base: 5000, jitter: 5000}; // TODO: increase these numbers.
-  const subsequentGhostMsWaitUntilSpawn = {base: 5000, jitter: 500}; // TODO: increase these numbers.
+  const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000}; // TODO: increase these numbers.
+  const subsequentGhostMsWaitUntilSpawn = {base: 5000, jitter: 1000}; // TODO: increase these numbers.
   let ghostBehaviour: (
-    ghost: { instance: Character, sprite: Sprite, msWaitUntilSpawn: number, speed: Speed }, // TODO: replace with animated sprites
-    player: { instance: Character, sprite: Sprite },
-    critters: Character[]
+    ghost: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }, // TODO: replace with animated sprites
+    player: { instance: Character, sprite: AnimatedSprite },
   ) => void;
 
   const playerBuffs: CharacterBuff[] = [];
@@ -131,7 +148,7 @@ export default function GridMapSquarePixi(): JSXElement {
   const [lineTwo, setLineTwo] = createSignal('');
   const [finishedTypingLineTwo, setFinishedTypingLineTwo] = createSignal(false);
 
-  const lineThreeContent = 'There are other hungry things besides you.'.split('').reverse();
+  const lineThreeContent = 'Visitors are not welcome.'.split('').reverse();
   const [lineThree, setLineThree] = createSignal('');
   const [finishedTypingLineThree, setFinishedTypingLineThree] = createSignal(false);
 
@@ -232,11 +249,6 @@ export default function GridMapSquarePixi(): JSXElement {
         // Shows hand cursor
         sprite.cursor = 'pointer';
 
-        // sprite.on('pointerover', () => {
-        //   console.log('hovered');
-        //   // TODO: do something to highlight + add some pointer clicked sprite etc.
-        // });
-
         sprite.on('pointerdown', () => {
           movePlayerTo(cell);
         });
@@ -331,31 +343,35 @@ export default function GridMapSquarePixi(): JSXElement {
         critterBaseRunningFps * runningFpsDivider :
         critterBaseLookingAroundFps; // has to be a multiple of the number of textures.
 
+      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth/4;
+
       if (ms.action === 'running') {
         switch (ms.direction) {
         case MovementDirection.N:
         case MovementDirection.NW:
         case MovementDirection.W:
           critterSprite.sprite.textures = critterTextures.running.north;
-          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(0, 0);
+          critterSprite.sprite.scale.x = Math.abs(critterSprite.sprite.scale.x);
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.NE:
         case MovementDirection.E:
           critterSprite.sprite.textures = critterTextures.running.north;
-          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          critterSprite.sprite.scale.x = -1 * Math.abs(critterSprite.sprite.scale.x);
+          // Translate the sprite right because the pixijs pivot makes no sense.
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         case MovementDirection.S:
         case MovementDirection.SW:
           critterSprite.sprite.textures = critterTextures.running.south;
-          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(0, 0);
+          critterSprite.sprite.scale.x = Math.abs(critterSprite.sprite.scale.x);
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.SE:
           critterSprite.sprite.textures = critterTextures.running.south;
-          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          critterSprite.sprite.scale.x = -1 * Math.abs(critterSprite.sprite.scale.x);
+          // Translate the sprite right because the pixijs pivot makes no sense.
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         }
       } else {
@@ -367,23 +383,21 @@ export default function GridMapSquarePixi(): JSXElement {
         case MovementDirection.SW:
           critterSprite.sprite.textures = critterTextures.lookingAround;
           critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(0, 0);
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.NE:
         case MovementDirection.E:
         case MovementDirection.SE:
           critterSprite.sprite.textures = critterTextures.lookingAround;
           critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.pivot.set(-1 * cellWidth * 0.6, 0);
+          // Translate the sprite right because the pixijs pivot makes no sense.
+          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         }
       }
 
       critterSprite.sprite.animationSpeed = fps;
       critterSprite.sprite.play();
-      critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
-      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth/4;
-
 
       // TODO: extract this whole method
       // Update critter visibility
@@ -395,7 +409,7 @@ export default function GridMapSquarePixi(): JSXElement {
       if (distanceToPlayer >= spotLightRadius) {
         critterSprite.sprite.alpha = 1;
         critterInstance.setIsTriggered(false);
-        critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
+        // critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
         // critterSprite.sprite.tint = 'red';
       }
       if (distanceToPlayer < spotLightRadius) {
@@ -484,7 +498,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
         if (distanceToPlayer >= spotLightRadius) {
           critterSprite.sprite.alpha = 1;
-          critterSprite.sprite.tint = new Color('rgb(255,142,155)');
+          // critterSprite.sprite.tint = new Color('rgb(255,142,155)');
           critterInstance.setIsTriggered(false);
 
           // critterSprite.sprite.tint = 'red';
@@ -649,10 +663,28 @@ export default function GridMapSquarePixi(): JSXElement {
       }
 
       const ghostSprite = ghostInstance.sprite;
+      const ms = ghostInstance.instance.movementState;
 
-      // Animate ghost sprite
-      ghostSprite.x = ghost.x * ghostSpeed.px + cellWidth / 4;
-      ghostSprite.y = ghost.y * ghostSpeed.px + cellWidth / 4;
+      // Animate the ghost sprite
+      ghostSprite.y = ghost.y * ghostSpeed.px;
+
+      switch (ms.direction) {
+      case MovementDirection.SW:
+      case MovementDirection.W:
+      case MovementDirection.NW:
+      case MovementDirection.N:
+        ghostSprite.scale.x = -1 * Math.abs(ghostSprite.scale.x);
+        // Translate the ghost sprite right because pixijs pivots make no sense:
+        ghostSprite.x = ghost.x * ghostSpeed.px + ghostSprite.width;
+        break;
+      case MovementDirection.NE:
+      case MovementDirection.E:
+      case MovementDirection.SE:
+      case MovementDirection.S:
+      default:
+        ghostSprite.scale.x = Math.abs(ghostSprite.scale.x);
+        ghostSprite.x = ghost.x * ghostSpeed.px;
+      }
 
       const distanceToPlayer = calcDiagonalDistance(
         {x: ghostSprite.x, y: ghostSprite.y},
@@ -669,9 +701,7 @@ export default function GridMapSquarePixi(): JSXElement {
         ghostSprite.alpha = 1;
       }
       if (distanceToPlayer < spotLightRadius * 0.1 && ghostInstance.instance.isAlive) {
-        // TODO: set player dead and show game over screen with a joke about 9 lives.
-        console.log(`Ghost ${ghostInstance.instance.id} caught the player!`);
-        // TODO: If the ghost meets the player, do things.
+        player.setIsAlive(false);
       }
     };
 
@@ -698,43 +728,50 @@ export default function GridMapSquarePixi(): JSXElement {
           ghostSprite.alpha = 1;
         }
         if (distanceToPlayer < spotLightRadius * 0.1 && ghost.instance.isAlive) {
-          console.log(`Ghost ${ghost.instance.id} caught the player!`);
-          // TODO: If the ghost meets the player, do things.
+          player.setIsAlive(false);
         }
       }
-
-      // TODO: If the player meets the ghost, do things.
-      //  Make ghost invisible outside of the player's sight radius
     };
+
+    // Generate ghosts
+    const ghostLookingAroundTextures = await Assets.loadBundle('ghost-looking-around');
+    const ghostRunningTextures = await Assets.loadBundle('ghost-running');
+    ghostTextures = getGhostTextures(
+      ghostLookingAroundTextures,
+      ghostRunningTextures,
+    );
 
     for (let i = 0; i < numberOfGhosts; i++) {
       const ghostPathfinder = getPathfinder(generatedGrid);
       const ghost = getCharacter(ghostPathfinder, {x: -1, y: -1}, ghostSSMB);
 
-      const ghostTexture = Texture.WHITE;
-      const sprite = new Sprite(ghostTexture);
-      sprite.tint = i === 0 ? 'green' : 'purple';
-      sprite.width = cellWidth / 2;
-      sprite.height = cellWidth / 2;
+      const ghostSprite = new AnimatedSprite(ghostTextures.spawn, true);
+      ghostSprite.animationSpeed = ghostBaseSpawningFps;
+      ghostSprite.loop = false;
+      ghostSprite.width = cellWidth;
+      ghostSprite.height = cellWidth;
+
+      if (i === 1) {
+        ghostSprite.tint = 'rgb(191, 223, 159)';
+      }
 
       ghosts.push({
         instance: ghost,
-        sprite,
+        sprite: ghostSprite,
         msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
         speed: ghostSpeed,
       });
 
-      container.addChild(sprite); // TODO: replace with animated ghost sprite.
+      container.addChild(ghostSprite); // TODO: replace with animated ghost sprite.
 
       ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUiUpdater});
     }
 
     ghostBehaviour = async (
-      ghost: { instance: Character, msWaitUntilSpawn: number, sprite: Sprite, speed: Speed },
-      player: { instance: Character, sprite: Sprite },
-      critters,
+      ghost: { instance: Character, msWaitUntilSpawn: number, sprite: AnimatedSprite, speed: Speed },
+      player: { instance: Character, sprite: AnimatedSprite },
     ) => {
-      if (!critters.some(critter => critter.isAlive) || !player.instance.isAlive) {
+      if (numberOfCrittersEaten() === numberOfCritters || !player.instance.isAlive) {
         return;
       }
 
@@ -748,10 +785,10 @@ export default function GridMapSquarePixi(): JSXElement {
       const playerSprite = player.sprite;
 
       await delay(ghostSpawnWait);
-      const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
+
 
       let randomGhostSpawningCoords;
-      let playerCorridor;
+      const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
       const playerRoom = generatedRooms.find(room => room.roomDto.id === playerCell.roomId);
 
       if (playerRoom) {
@@ -760,24 +797,26 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: playerInstance.x, y: playerInstance.y},
         );
       } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
-        playerCorridor = generatedCorridors.find(corridor => corridor.id === playerCell.roomId);
-        if (!playerCorridor || playerCorridor.length() < 3) { // continue
-          await ghostBehaviour(ghost, player, critters);
-        }
-        randomGhostSpawningCoords = generateRandomCoordsInSpecificCorridor(
-          playerCorridor!, {x: playerInstance.x, y: playerInstance.y},
+        randomGhostSpawningCoords = ghostInstance.pathfinder.generateObstacleAwareRandomCoordsInAreaAround(
+          {x: playerInstance.x, y: playerInstance.y}, 5, true,
         );
+      }
+
+      if (!randomGhostSpawningCoords) { // continue
+        ghostBehaviour(ghost, player);
+        return;
       }
 
       ghostInstance.x = randomGhostSpawningCoords.x;
       ghostInstance.y = randomGhostSpawningCoords.y;
 
-      ghostSprite.x = ghostInstance.x * ghostSpeed.px + cellWidth / 4;
-      ghostSprite.y = ghostInstance.y * ghostSpeed.px + cellWidth / 4;
+      ghostSprite.scale.x = Math.abs(ghostSprite.scale.x);
+      ghostSprite.x = ghostInstance.x * ghostSpeed.px;
+      ghostSprite.y = ghostInstance.y * ghostSpeed.px;
 
       // TODO:
       //  1. extract this whole distance/alpha thing as its own thing.
-      //  2. refactor the other places that could use the spite directly, rather than having to recalculate its position.
+      //  2. refactor the other places that could use the sprite directly, rather than having to recalculate its position.
       const distanceToPlayer = calcDiagonalDistance(
         {x: ghostSprite.x, y: ghostSprite.y},
         {x: playerSprite.x, y: playerSprite.y},
@@ -793,9 +832,10 @@ export default function GridMapSquarePixi(): JSXElement {
         ghostSprite.alpha = 1;
       }
 
-      // TODO: play ghost appears animation without looping if the ghost sprite's alpha is > 0.
-      //  Otherwise simply jump to the relevant frame.
-      await delay(1000);
+      // Play ghost spawn animation.
+      ghostSprite.textures = ghostTextures.spawn;
+      ghostSprite.gotoAndPlay(0);
+      await delay(ghostBaseSpawnDuration + randomInt(0, 1000));
 
       // Try to anticipate the player's movement
       const ghostTargetCoords: Coords = {
@@ -808,15 +848,20 @@ export default function GridMapSquarePixi(): JSXElement {
       };
 
       const ghostTargetCell = ghostInstance.pathfinder.getGridCellAt(ghostTargetCoords.x, ghostTargetCoords.y);
+
       ghostInstance.setIsAlive(true);
+      ghostSprite.textures = ghostTextures.running;
+      ghostSprite.animationSpeed = ghostBaseRunningFps;
+      ghostSprite.gotoAndPlay(0);
       await ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
-      // TODO: play ghost moves animation without looping.
 
-      ghostInstance.setIsAlive(false);
-      await delay(1000);
-      ghostSprite.alpha = 0; // TODO: replace this with playing the ghost disappear animation without looping (move it above the delay).
+      // Play ghost de-spawn animation.
+      ghostInstance.setIsAlive(false); // Ghost will not kill the player anymore.
+      await delay(300 + randomInt(50, 200));
+      ghostSprite.textures = ghostTextures.despawn;
+      ghostSprite.gotoAndPlay(0);
 
-
+      await delay(ghostBaseSpawnDuration + randomInt(0, 1000));
       const newGhostSpawnWait = randomInt(
         subsequentGhostMsWaitUntilSpawn.base,
         subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
@@ -836,7 +881,6 @@ export default function GridMapSquarePixi(): JSXElement {
           speed: ghost.speed,
         },
         player,
-        critters,
       );
     };
     // End "Ghosts stuff"
@@ -1004,7 +1048,7 @@ export default function GridMapSquarePixi(): JSXElement {
     }
 
     for (const ghost of ghosts) {
-      // ghostBehaviour(ghost, { instance: player, sprite: playerSprite }, critters);
+      ghostBehaviour(ghost, { instance: player, sprite: playerSprite });
     }
 
     setIsGameStarted(true);
@@ -1060,7 +1104,7 @@ export default function GridMapSquarePixi(): JSXElement {
               style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
                    '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
                    'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
-            <div class={'absolute top-0 left-0 bg-slate-800 w-full h-full ' +
+            <div class={'absolute top-0 left-0 bg-slate-800/50 w-full h-full ' +
               'grid grid-cols-1 gap-8 content-center z-30 '}>
               <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
                 style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
@@ -1079,10 +1123,9 @@ export default function GridMapSquarePixi(): JSXElement {
         >
           {
             (!finishedLoading() || !isGameStarted()) &&
-            <div
-              class={'bg-slate-800 h-full w-full ' +
+            <div class={'bg-slate-800 h-full w-full ' +
                    'grid grid-cols-1 content-center z-30 '}>
-              <div class={'w-1/2 text-left fixed bottom-[60%] left-1/4'}>
+              <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
                 <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineOne()}
@@ -1099,22 +1142,28 @@ export default function GridMapSquarePixi(): JSXElement {
                     <span>_</span>
                   }
                 </p>
-                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
-                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                    {lineThree()}
-                  </span>
-                  { finishedTypingLineOne() && finishedTypingLineThree() &&
-                    <span classList={{
-                      'animate-pulse-fast': finishedTypingLineThree(),
-                    }}>_</span>
-                  }
-                </p>
-              </div>
-              <div class={'grid grid-cols-1 gap-8 content-center'}>
-                {
-                  <EnterButton onClick={() => startGame()}
-                    isDisabled={!(finishedLoading() && finishedTypingLineThree())} />
-                }
+                <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
+                  <div class={'flex-none'}>
+                    <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                        {lineThree()}
+                      </span>
+                      { finishedTypingLineThree() &&
+                        <span classList={{
+                          'animate-pulse-fast': finishedTypingLineThree(),
+                        }}>_</span>
+                      }
+                    </p>
+                  </div>
+                  <div class={'transition-opacity -mt-6'}
+                    classList={{
+                      'opacity-0': !finishedTypingLineThree(),
+                      'opacity-100': finishedTypingLineThree(),
+                    }}>
+                    <EnterButton onClick={() => startGame()}
+                      isDisabled={!(finishedLoading() && finishedTypingLineThree())} />
+                  </div>
+                </div>
               </div>
             </div>
           }

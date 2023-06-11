@@ -16,7 +16,7 @@ export interface GridCell {
   y: number;
   status: CellStatus;
   roomId?: RoomDto['id'] | Corridor['id'];
-  isAccessible: () => boolean;
+  isAccessible(): boolean;
 }
 
 export interface Grid {
@@ -148,7 +148,9 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     return true;
   };
 
-  const _this = {cells, placeRooms, placeCorridors, setStatusForCellAt, getCellAt};
+  const _this = {
+    cells, placeRooms, placeCorridors, setStatusForCellAt, getCellAt,
+  };
 
   return _this;
 };
@@ -162,5 +164,11 @@ export const getEmptyGrid = (): Grid => {
 
   const getCellAt = (x: number, y: number): GridCell => getCell(x, y, CellStatus.OUT_OF_BOUNDS);
 
-  return {cells: [[]], placeRooms, placeCorridors, setStatusForCellAt, getCellAt};
+  return {
+    cells: [[]],
+    placeRooms,
+    placeCorridors,
+    setStatusForCellAt,
+    getCellAt,
+  };
 };

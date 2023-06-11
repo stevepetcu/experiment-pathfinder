@@ -570,6 +570,92 @@
           "srcs": "/assets/character/blobfish/running/south/frame-03.png"
         }
       ]
+    },
+    {
+      "name": "ghost-looking-around",
+      "assets": [
+        {
+          "name": "frame_00",
+          "srcs": "/assets/character/ghost/looking-around/frame-00.png"
+        },
+        {
+          "name": "frame_01",
+          "srcs": "/assets/character/ghost/looking-around/frame-01.png"
+        },
+        {
+          "name": "frame_02",
+          "srcs": "/assets/character/ghost/looking-around/frame-02.png"
+        },
+        {
+          "name": "frame_03",
+          "srcs": "/assets/character/ghost/looking-around/frame-03.png"
+        },
+        {
+          "name": "frame_04",
+          "srcs": "/assets/character/ghost/looking-around/frame-04.png"
+        },
+        {
+          "name": "frame_05",
+          "srcs": "/assets/character/ghost/looking-around/frame-05.png"
+        },
+        {
+          "name": "frame_06",
+          "srcs": "/assets/character/ghost/looking-around/frame-06.png"
+        },
+        {
+          "name": "frame_07",
+          "srcs": "/assets/character/ghost/looking-around/frame-07.png"
+        },
+        {
+          "name": "frame_08",
+          "srcs": "/assets/character/ghost/looking-around/frame-08.png"
+        },
+        {
+          "name": "frame_09",
+          "srcs": "/assets/character/ghost/looking-around/frame-09.png"
+        },
+        {
+          "name": "frame_10",
+          "srcs": "/assets/character/ghost/looking-around/frame-10.png"
+        },
+        {
+          "name": "frame_11",
+          "srcs": "/assets/character/ghost/looking-around/frame-11.png"
+        },
+        {
+          "name": "frame_12",
+          "srcs": "/assets/character/ghost/looking-around/frame-12.png"
+        }
+      ]
+    },
+    {
+      "name": "ghost-running",
+      "assets": [
+        {
+          "name": "running_00",
+          "srcs": "/assets/character/ghost/running/frame-00.png"
+        },
+        {
+          "name": "running_01",
+          "srcs": "/assets/character/ghost/running/frame-01.png"
+        },
+        {
+          "name": "running_02",
+          "srcs": "/assets/character/ghost/running/frame-02.png"
+        },
+        {
+          "name": "running_03",
+          "srcs": "/assets/character/ghost/running/frame-03.png"
+        },
+        {
+          "name": "running_04",
+          "srcs": "/assets/character/ghost/running/frame-04.png"
+        },
+        {
+          "name": "running_05",
+          "srcs": "/assets/character/ghost/running/frame-05.png"
+        }
+      ]
     }
   ]
 }

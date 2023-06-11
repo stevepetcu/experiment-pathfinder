@@ -11,7 +11,7 @@ export default function EnterButton(props: EnterButtonProps): JSXElement {
   return <button disabled={props.isDisabled}
     class="disabled:cursor-wait disabled:scale-[0.97] disabled:bg-slate-300 disabled:text-slate-400
           bg-slate-200 hover:bg-white text-slate-700 font-semibold
-          py-3.5 px-5 inline m-auto min-w-fit
+          py-3.5 px-5 inline m-auto min-w-max
           text-xl md:text-2xl
           border border-r-slate-100 border-t-slate-100 border-b-slate-400 border-l-slate-400 rounded-md
           active:scale-[0.97]"

@@ -2,6 +2,7 @@
 
 import binaryHeap, {BinaryHeap} from '../utils/BinaryHeap';
 import {calcDiagonalDistance, calcManhattanDistance} from '../utils/DistanceCalculator';
+import randomInt from '../utils/RandomInt';
 import {Coords} from './Coords';
 import { Grid, GridCell} from './SquareGrid';
 
@@ -121,6 +122,11 @@ export interface Pathfinder {
     allowDiagonalMovement: boolean;
     returnClosestCellOnPathFailure: boolean;
   };
+  generateObstacleAwareRandomCoordsInAreaAround(
+    center: Coords,
+    radius: number,
+    avoidTheCenter: boolean
+  ): Coords | null
 }
 
 export const getPathfinder = (
@@ -279,6 +285,48 @@ export const getPathfinder = (
     return pfOptions.returnClosestCellOnPathFailure ? pathTo(closestCell) : [];
   };
 
+  const generateObstacleAwareRandomCoordsInAreaAround = (
+    center: Coords,
+    radius: number,
+    avoidTheCenter: boolean,
+    tries = 0,
+  ): Coords | null => {
+    if (tries > 9) {
+      return null;
+    }
+    const minX = center.x - radius;
+    const maxX = center.x + radius;
+    const minY = center.y - radius;
+    const maxY = center.y + radius;
+
+    const x = randomInt(minX, maxX + 1);
+    const y = randomInt(minY, maxY + 1);
+
+    tries++;
+
+    const cell = getGridCellAt(x, y);
+
+    if (!cell.isAccessible()) {
+      return generateObstacleAwareRandomCoordsInAreaAround(
+        center,
+        radius,
+        avoidTheCenter,
+        tries,
+      );
+    }
+
+    if (avoidTheCenter && x === center.x && y === center.y) {
+      return generateObstacleAwareRandomCoordsInAreaAround(
+        center,
+        radius,
+        avoidTheCenter,
+        tries,
+      );
+    }
+
+    return {x, y};
+  };
+
   const _this = {
     cells,
     dirtyCells,
@@ -287,6 +335,7 @@ export const getPathfinder = (
     reset,
     getGridCellAt,
     options: pfOptions,
+    generateObstacleAwareRandomCoordsInAreaAround,
   };
 
   return _this;
@@ -304,6 +353,11 @@ export const getEmptyPathfinder = (grid: Grid): Pathfinder => {
     options: {
       allowDiagonalMovement: true,
       returnClosestCellOnPathFailure: true,
+    },
+    generateObstacleAwareRandomCoordsInAreaAround(
+      _center: Coords, _radius: number, _avoidTheCenter: boolean,
+    ): Coords | null {
+      return null;
     },
   };
 };
