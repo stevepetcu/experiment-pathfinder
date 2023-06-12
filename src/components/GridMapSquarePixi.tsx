@@ -36,10 +36,19 @@ import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import getSSMB, {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
 import {formatSeconds} from '../utils/Time';
+import setVh from '../utils/WindowHeight';
 import BuffsDisplay from './BuffsDisplay';
 import EnterButton from './EnterButton';
+import styles from './GridMapSquarePixi.module.css';
 
 export default function GridMapSquarePixi(): JSXElement {
+  // Override vh property, so it works properly on mobile devices with browser navigation menus
+  setVh();
+  window.addEventListener('resize', () => {
+    setVh();
+  });
+  // End "Override vh property, so it works properly on mobile devices with browser navigation menus"
+
   // These settings are not user-configurable
   const cellWidth = 45;
   const mapWidth = 50;
@@ -168,7 +177,7 @@ export default function GridMapSquarePixi(): JSXElement {
       return;
     }
 
-    await delay(randomInt(5, 75));
+    await delay(randomInt(35, 75));
 
     lineSetter(line => line + content.pop());
 
@@ -1144,10 +1153,10 @@ export default function GridMapSquarePixi(): JSXElement {
       </Show>
       <div class={'relative inline-block'}>
         <div id="grid-scrollable-container"
-          class={'inline-block w-screen h-screen'}
+          class={`inline-block w-screen ${styles.heightScreen}`}
           classList={{
             'overflow-auto': isGameStarted(),
-            'overflow-hidden': !isGameStarted(),
+            'overflow-visible': !isGameStarted(),
           }}
         >
           {
