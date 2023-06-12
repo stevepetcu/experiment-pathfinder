@@ -1,0 +1,12 @@
+.highScoresTableRow > div {
+    @apply pl-2.5;
+}
+
+.highScoresTableRow > div:first-child {
+    @apply pl-0;
+}
+
+.gameWonView p {
+    @apply text-base md:text-lg;
+    word-spacing: -.5ch;
+}

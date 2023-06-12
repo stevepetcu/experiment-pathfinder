@@ -39,6 +39,7 @@ import {formatSeconds} from '../utils/Time';
 import setVh from '../utils/WindowHeight';
 import BuffsDisplay from './BuffsDisplay';
 import EnterButton from './EnterButton';
+import GameWon from './GameWon';
 import styles from './GridMapSquarePixi.module.css';
 
 export default function GridMapSquarePixi(): JSXElement {
@@ -1070,10 +1071,11 @@ export default function GridMapSquarePixi(): JSXElement {
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForCritters})
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
-    await delay(5000);
     setFinishedLoading(true);
-
-    // setIsGameWon(true); // TODO: used for dev, remove
+    // TODO: the below used for dev, remove
+    // setIsGameStarted(true);
+    // setIsGameOver(true);
+    // setIsGameWon(true);
   });
 
   const destroyPixiApp = () => {
@@ -1159,25 +1161,14 @@ export default function GridMapSquarePixi(): JSXElement {
           class={`inline-block w-screen ${styles.heightScreen}`}
           classList={{
             'overflow-auto': isGameStarted(),
-            'overflow-visible': !isGameStarted(),
+            'overflow-visible': !isGameStarted() || isGameOver(),
           }}
         >
           {
             isGameWon() &&
-            <>
-              <div class={'absolute top-0 left-0 w-full h-full z-10 '}
-                style={'-webkit-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
-                     '-moz-box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5); ' +
-                     'box-shadow: inset 0px 0px 90px 150px rgba(0,0,0,0.5);'}/>
-              <div class={'absolute top-0 left-0 bg-slate-800/50 w-full h-full ' +
-                'grid grid-cols-1 gap-8 content-center z-30 '}>
-                <p class={'text-2xl sm:text-3xl md:text-4xl leading-none text-slate-400 antialiased'}
-                  style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                  Congrats, you're full! *burp* Play again?
-                </p>
-                <EnterButton onClick={() => restartGame()} isDisabled={false} />
-              </div>
-            </>
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
+              <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
+            </div>
           }
           {
             isGameLost() &&
@@ -1186,14 +1177,12 @@ export default function GridMapSquarePixi(): JSXElement {
               <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
                 <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
                   <div class={'flex-none'}>
-                    <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
-                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                        {lineGameLost()}
-                      </span>
+                    <h1>
+                      {lineGameLost()}
                       <span classList={{
                         'animate-pulse-fast': finishedTypingLineGameLost(),
                       }}>_</span>
-                    </p>
+                    </h1>
                   </div>
                   <div class={'transition-opacity -mt-6'}
                     classList={{
@@ -1212,34 +1201,32 @@ export default function GridMapSquarePixi(): JSXElement {
             <div class={'bg-slate-800 h-full w-full ' +
                    'grid grid-cols-1 content-center z-30 '}>
               <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
-                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                <h1>
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineOne()}
                   </span>
                   {
                     !finishedTypingLineOne() && <span>_</span>
                   }
-                </p>
-                <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
+                </h1>
+                <h1>
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineTwo()}
                   </span>
                   { finishedTypingLineOne() && !finishedTypingLineTwo() &&
                     <span>_</span>
                   }
-                </p>
+                </h1>
                 <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
                   <div class={'flex-none'}>
-                    <p class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased relative'}>
-                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                        {lineThree()}
-                      </span>
+                    <h1 class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased'}>
+                      {lineThree()}
                       { finishedTypingLineThree() &&
                         <span classList={{
                           'animate-pulse-fast': finishedTypingLineThree(),
                         }}>_</span>
                       }
-                    </p>
+                    </h1>
                   </div>
                   <div class={'transition-opacity -mt-6'}
                     classList={{
