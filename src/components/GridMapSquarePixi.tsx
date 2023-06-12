@@ -1070,7 +1070,10 @@ export default function GridMapSquarePixi(): JSXElement {
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForCritters})
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
+    await delay(5000);
     setFinishedLoading(true);
+
+    // setIsGameWon(true); // TODO: used for dev, remove
   });
 
   const destroyPixiApp = () => {
