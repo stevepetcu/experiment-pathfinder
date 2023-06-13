@@ -10,3 +10,7 @@
     @apply text-base md:text-lg;
     word-spacing: -.5ch;
 }
+
+.gameWonView a {
+    @apply underline underline-offset-2 decoration-1 decoration-slate-300
+}

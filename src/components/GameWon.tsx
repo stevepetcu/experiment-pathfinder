@@ -85,13 +85,11 @@ export default function GameWon(props: GameWonProps): JSXElement {
     if (name !==  null) {
       nameJsx = <p>{name}</p>;
     } else {
-      nameJsx = <input
-        class="placeholder-gray-500 sm:placeholder-red-400 md:placeholder-blue-400
-        lg:placeholder-green-400 xl:placeholder-orange-400"
-        placeholder="Unknown"/>;
+      nameJsx = <input class={'rounded-none px-2'}
+        value={'Nameless Hero'} type={'text'} minlength={1} maxlength={20}/>;
     }
 
-    return <div class={`grid grid-cols-3 divide-x-2 divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
+    return <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
       <div><p>{nameJsx}</p></div>
       <div><p>{timeToComplete}</p></div>
       <div><p>{formattedDate}</p></div>
@@ -139,23 +137,27 @@ export default function GameWon(props: GameWonProps): JSXElement {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   return <div ref={gameWonContainer}
-    class={`w-full h-full overflow-auto md:w-3/4 xl:w-1/2 p-3 m-auto text-left text-slate-400 ${styles.gameWonView}`}>
-    <h1>
-      Congrats, you're full!
-    </h1>
-    <div class={'grid grid-cols-1 gap-y-7 divide-y-4 divide-slate-400 mt-7'}>
+    class={`w-full h-full overflow-auto md:w-3/4 xl:w-1/2 px-5 py-3 m-auto 
+    text-left text-slate-300 ${styles.gameWonView}
+    shadow-2xl border-4 border-slate-900/20`}>
+    <div class={'grid grid-cols-1 gap-y-5 divide-y-2 divide-slate-600 mt-7'}>
       <div>
+        <h1>
+          Congrats, you're full!
+        </h1>
+      </div>
+      <div class={'pt-5'}>
         <h2 class={'mb-3'}>Highscores</h2>
-        <div class={`grid grid-cols-3 divide-x-2 divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
-          <div><p>Name</p></div>
-          <div><p>Time to complete</p></div>
-          <div><p>Date</p></div>
+        <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
+          <div class={'border-b border-slate-400 mb-2'}><p>Name</p></div>
+          <div class={'border-b border-slate-400 mb-2'}><p>Time to complete</p></div>
+          <div class={'border-b border-slate-400 mb-2'}><p>Date</p></div>
         </div>
         <Show when={highScoresJsx().length > 0} fallback={'Loading…'}>
           {highScoresJsx()}
         </Show>
       </div>
-      <div class={'pt-7'}>
+      <div class={'pt-5'}>
         <h2 class={'mb-3'}>Credits</h2>
         <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
         <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
@@ -164,10 +166,14 @@ export default function GameWon(props: GameWonProps): JSXElement {
         <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
         <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
       </div>
-    </div>
-    <div class={'grid grid-cols-2 gap-y-7 divide-y-4 divide-slate-400 mt-7'}>
-      <h2 class={'mt-7'}>Play again<span class={'animate-pulse-fast'}>_</span></h2>
-      <EnterButton onClick={() => props.restartGameCallback()} isDisabled={!isScrolledToBottom()}/>
+      <div class={'grid grid-cols-2 gap-y-5 divide-slate-400 pt-5'}>
+        <div>
+          <h2 class={'mt-7'}>Play again<span class={'animate-pulse-fast'}>_</span></h2>
+        </div>
+        <div class={'pt-5 justify-self-end'}>
+          <EnterButton onClick={() => props.restartGameCallback()} isDisabled={!isScrolledToBottom()}/>
+        </div>
+      </div>
     </div>
   </div>;
 }

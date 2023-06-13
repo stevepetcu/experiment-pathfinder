@@ -1220,7 +1220,7 @@ export default function GridMapSquarePixi(): JSXElement {
                 </h1>
                 <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
                   <div class={'flex-none'}>
-                    <h1 class={'text-3xl md:text-4xl leading-none text-slate-400 antialiased'}>
+                    <h1 class={'text-3xl md:text-4xl leading-none text-slate-300 antialiased'}>
                       {lineThree()}
                       { finishedTypingLineThree() &&
                         <span classList={{
