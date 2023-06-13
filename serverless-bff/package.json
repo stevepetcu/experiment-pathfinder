@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "vercel:dev": "vercel dev -l 3060",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
