@@ -65,8 +65,10 @@ const headRequestHandler = (response: VercelResponse) => {
   return response.status(200).send(null);
 };
 
-const otherRequestHandeler = (response: VercelResponse) => {
-  return response.status(405).send(null);
+const otherRequestHandler = (response: VercelResponse) => {
+  return response.status(405)
+    .appendHeader('Allow', 'HEAD,GET,POST')
+    .send(null);
 };
 
 export default function handler(
@@ -74,13 +76,13 @@ export default function handler(
   response: VercelResponse,
 ) {
   switch (request.method) {
+  case 'HEAD':
+    return headRequestHandler(response);
   case 'GET':
     return getRequestHandler(response);
   case 'POST':
     return postRequestHandler(response);
-  case 'HEAD':
-    return headRequestHandler(response);
   default:
-    return otherRequestHandeler(response);
+    return otherRequestHandler(response);
   }
 }
