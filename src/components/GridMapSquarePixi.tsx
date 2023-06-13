@@ -74,7 +74,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     if (finishedLoading() &&  !isGameOver()) {
       startGame();
-    } else if (finishedLoading() && isGameOver()) {
+    } else if (isGameOver()) {
       restartGame();
     }
 
@@ -127,7 +127,8 @@ export default function GridMapSquarePixi(): JSXElement {
 
   const ghosts: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
   let ghostTextures: GhostTextureMap;
-  const numberOfGhosts = 2;
+  // const numberOfGhosts = 2;
+  const numberOfGhosts = 0;
   const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000}; // TODO: increase these numbers.
   const subsequentGhostMsWaitUntilSpawn = {base: 6000, jitter: 1000}; // TODO: increase these numbers.
   let ghostBehaviour: (
@@ -792,7 +793,7 @@ export default function GridMapSquarePixi(): JSXElement {
       ghostSprite.width = cellWidth;
       ghostSprite.height = cellWidth;
 
-      if (i === 1) {
+      if (i % 2 === 1) {
         ghostSprite.tint = 'rgb(191, 223, 159)';
       }
 
@@ -1073,9 +1074,9 @@ export default function GridMapSquarePixi(): JSXElement {
 
     setFinishedLoading(true);
     // TODO: the below used for dev, remove
-    // setIsGameStarted(true);
-    // setIsGameOver(true);
-    // setIsGameWon(true);
+    setIsGameStarted(true);
+    setIsGameOver(true);
+    setIsGameWon(true);
   });
 
   const destroyPixiApp = () => {
@@ -1244,8 +1245,8 @@ export default function GridMapSquarePixi(): JSXElement {
             finishedLoading() && isGameStarted() && !isGameOver() &&
             <>
               <div class={'absolute top-5 left-[3%] text-left z-20 ' +
-                'p-3 rounded bg-slate-700/30 ' +
-                'outline outline-offset-2 outline-slate-700 '}>
+                'p-3 bg-slate-700/50 border-2 border-slate-900 ' +
+                'outline-double outline-2 outline-offset-2 outline-slate-700 '}>
                 <div>
                   <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}
                     style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
