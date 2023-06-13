@@ -8,3 +8,4 @@ dist
 
 # IDEs
 .idea
+.vercel

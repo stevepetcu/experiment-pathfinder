@@ -33,7 +33,8 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
 
   try {
     responseBody = await listHighScores(queryLimit);
-  } catch (_error) {
+  } catch (error) {
+    console.error(error);
     responseBody = {
       error: 'Whoops, we messed up. Please try again later.',
     };
