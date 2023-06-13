@@ -15,6 +15,7 @@ interface PlayerScore {
   timeToComplete: number;
   timestamp: number;
 }
+
 export default function GameWon(props: GameWonProps): JSXElement {
   let gameWonContainer: HTMLElement;
 

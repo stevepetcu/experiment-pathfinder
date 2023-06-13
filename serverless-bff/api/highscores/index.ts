@@ -1,58 +1,48 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import {PrismaClient} from '@prisma/client';
+import type {VercelRequest, VercelResponse} from '@vercel/node';
 
-const getRequestHandler = (response: VercelResponse) => {
-  return response.status(200).send([
-    {
-      name: 'Foo',
-      timeToComplete: 60,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Fook',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000 + 3000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 120,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 430,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 350,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 500,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 220,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 360,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-  ]);
+const prisma = new PrismaClient;
+
+const listHighScores = async (limit?: number) => {
+  return await prisma.highScore.findMany({ take: limit });
+};
+
+const getRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
+  const {limit} = request.query;
+  let queryLimit: number | undefined = undefined;
+  const clientErrors = [];
+
+  if (limit && typeof limit === 'string') {
+    queryLimit = parseInt(limit);
+  }
+
+  if (limit && typeof limit !== 'string' || (queryLimit && (isNaN(queryLimit) || queryLimit < 0))) {
+    clientErrors.push({
+      error: 'The \'limit\' query parameter must be exactly one positive integer.',
+    });
+  }
+
+  if (clientErrors.length > 0) {
+    return response.status(400).send({
+      errors: clientErrors,
+    });
+  }
+
+  let responseBody;
+  let responseStatusCode = 200;
+
+  try {
+    responseBody = await listHighScores(queryLimit);
+  } catch (_error) {
+    responseBody = {
+      error: 'Whoops, we messed up. Please try again later.',
+    };
+    responseStatusCode = 500;
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  return response.status(responseStatusCode).send(responseBody);
 };
 
 const postRequestHandler = (response: VercelResponse) => {
@@ -71,7 +61,7 @@ const otherRequestHandler = (response: VercelResponse) => {
     .send(null);
 };
 
-export default function handler(
+export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
 ) {
@@ -79,7 +69,7 @@ export default function handler(
   case 'HEAD':
     return headRequestHandler(response);
   case 'GET':
-    return getRequestHandler(response);
+    return await getRequestHandler(request, response);
   case 'POST':
     return postRequestHandler(response);
   default:
