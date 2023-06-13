@@ -50,7 +50,7 @@ export const getBlobfishBuff = (): CharacterBuff => {
       'speed': 25,
       'sight': 0.25,
     },
-    spriteImage: '/assets/buffs/milk.png', // TODO: update this
+    spriteImage: '/assets/buffs/blobfish.png',
     stacks,
     incrementStacks,
   };

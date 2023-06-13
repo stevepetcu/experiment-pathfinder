@@ -178,7 +178,7 @@ export default function GridMapSquarePixi(): JSXElement {
       return;
     }
 
-    await delay(randomInt(35, 75));
+    await delay(randomInt(35, 50));
 
     lineSetter(line => line + content.pop());
 
@@ -348,7 +348,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       if (!critterInstance.isAlive) {
         // critterSprite.sprite.tint = 'grey';
-        critterSprite.sprite.alpha = 1;
+        critterSprite.sprite.alpha = 0;
         ssmb.removeSubscriber(critterInstance.id);
         return;
       }
@@ -424,7 +424,7 @@ export default function GridMapSquarePixi(): JSXElement {
       );
 
       if (distanceToPlayer >= spotLightRadius) {
-        critterSprite.sprite.alpha = 1;
+        critterSprite.sprite.alpha = 0;
         critterInstance.setIsTriggered(false);
         // critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
         // critterSprite.sprite.tint = 'red';
@@ -516,7 +516,7 @@ export default function GridMapSquarePixi(): JSXElement {
         );
 
         if (distanceToPlayer >= spotLightRadius) {
-          critterSprite.sprite.alpha = 1;
+          critterSprite.sprite.alpha = 0;
           // critterSprite.sprite.tint = new Color('rgb(255,142,155)');
           critterInstance.setIsTriggered(false);
 
