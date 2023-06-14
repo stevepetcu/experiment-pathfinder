@@ -7,26 +7,9 @@ const SMALLINT_MAX_VALUE = 32767;
 
 const prisma = new PrismaClient;
 
-const listHighScores = async (limit?: number) => {
-  return await prisma.highScore.findMany({
-    orderBy: [
-      {
-        timeToComplete: 'asc',
-      },
-      {
-        createdAt: 'desc',
-      },
-    ],
-    take: limit,
-  });
-};
-
 const getRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
   const {limit} = request.query;
   const schema = z.coerce.number().min(1).optional();
-
-  let responseBody;
-  let responseStatusCode = 200;
 
   const validationResult = schema.safeParse(limit);
 
@@ -41,8 +24,21 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
     });
   }
 
+  let responseBody;
+  let responseStatusCode = 200;
+
   try {
-    responseBody = await listHighScores(schema.parse(limit));
+    responseBody = await prisma.highScore.findMany({
+      orderBy: [
+        {
+          timeToComplete: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
+      take: schema.parse(limit),
+    });
   } catch (error) {
     console.error(error);
     responseBody = {
@@ -57,18 +53,14 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
 };
 
 const postRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
-  const HighScore = z.object({
+  const CreateHighScoreRequest = z.object({
     name: z.string().min(2).max(20),
     timeToComplete: z.number().min(1).max(SMALLINT_MAX_VALUE),
   });
+  const parsedHsReq = CreateHighScoreRequest.safeParse(request.body);
 
-  let responseBody;
-  let responseStatusCode = 200;
-
-  const parsedHs = HighScore.safeParse(request.body);
-
-  if (!parsedHs.success) {
-    const errors = parsedHs.error.format();
+  if (!parsedHsReq.success) {
+    const errors = parsedHsReq.error.format();
     console.info(errors);
     const name = errors.name ?
       {
@@ -82,9 +74,12 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
     return response.status(400).send({...name, ...timeToComplete});
   }
 
+  let responseBody;
+  let responseStatusCode = 200;
+
   try {
     responseBody = await prisma.highScore.create({
-      data: HighScore.parse(request.body),
+      data: CreateHighScoreRequest.parse(request.body),
     });
   } catch (error) {
     console.error(error);
