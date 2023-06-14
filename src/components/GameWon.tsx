@@ -51,7 +51,7 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
   try {
     // Save current score
     currentPlayerScore = (await superagent
-      .post('http://localhost:3060/api/highscores') // TODO: extract env variable
+      .post(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
       .send({
         name: 'Nameless Hero',
         timeToComplete: currentScore,
@@ -62,7 +62,7 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
     // We could be super thorough and sort these again,
     // but they're already sorted by the BFF & that's good enough for our use-case.
     topTenPlayerScores = (await superagent
-      .get('http://localhost:3060/api/highscores') // TODO: extract env variable
+      .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
       .query({
         limit: 10,
         offset: 0,
