@@ -44,7 +44,9 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
     } else {
       console.error(error);
       responseBody = {
-        error: 'Whoops, we messed up. Please try again later.',
+        errors: {
+          error: 'Whoops, we messed up. Please try again later.',
+        },
       };
       responseStatusCode = 500;
     }
@@ -83,7 +85,9 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
         name: errors.name._errors,
       } : {};
 
-    return response.status(400).send({...name});
+    return response.status(400).send({
+      errors: {...name},
+    });
   }
 
 

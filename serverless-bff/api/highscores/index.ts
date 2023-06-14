@@ -4,23 +4,32 @@ import * as console from 'console';
 import {z} from 'zod';
 
 const SMALLINT_MAX_VALUE = 32767;
+const DEFAULT_LIST_LIMIT = 10;
+const DEFAULT_OFFSET_START = 0;
 
 const prisma = new PrismaClient;
 
 const getRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
-  const {limit} = request.query;
-  const schema = z.coerce.number().min(1).optional();
-
-  const validationResult = schema.safeParse(limit);
+  const GetHighScoreListRequest = z.object({
+    limit: z.coerce.number().min(1).max(20).optional(),
+    offset: z.coerce.number().min(0).optional(),
+  });
+  const validationResult = GetHighScoreListRequest.safeParse(request.query);
 
   if (!validationResult.success) {
-    console.info(validationResult.error.format());
+    const errors = validationResult.error.format();
+    console.info(errors);
+    const limit = errors.limit ?
+      {
+        limit: ['Parameter must be exactly one integer that is > 0 and < 20.'],
+      } : {};
+    const offset = errors.offset ?
+      {
+        offset: ['Parameter must be exactly one integer that is > 0.'],
+      }: {};
+
     return response.status(400).send({
-      errors: {
-        limit: [
-          'Parameter must be exactly one integer that is > 0.',
-        ],
-      },
+      errors: {...limit, ...offset},
     });
   }
 
@@ -28,6 +37,7 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
   let responseStatusCode = 200;
 
   try {
+    const options = GetHighScoreListRequest.parse(request.query);
     responseBody = await prisma.highScore.findMany({
       orderBy: [
         {
@@ -37,12 +47,15 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
           createdAt: 'desc',
         },
       ],
-      take: schema.parse(limit),
+      skip: options.offset || DEFAULT_OFFSET_START,
+      take: options.limit || DEFAULT_LIST_LIMIT,
     });
   } catch (error) {
     console.error(error);
     responseBody = {
-      error: 'Whoops, we messed up. Please try again later.',
+      errors: {
+        error: 'Whoops, we messed up. Please try again later.',
+      },
     };
     responseStatusCode = 500;
   } finally {
@@ -71,7 +84,9 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
         timeToComplete: errors.timeToComplete._errors,
       }: {};
 
-    return response.status(400).send({...name, ...timeToComplete});
+    return response.status(400).send({
+      errors: {...name, ...timeToComplete},
+    });
   }
 
   let responseBody;
@@ -84,7 +99,9 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
   } catch (error) {
     console.error(error);
     responseBody = {
-      error: 'Whoops, we messed up. Please try again later.',
+      errors: {
+        error: 'Whoops, we messed up. Please try again later.',
+      },
     };
     responseStatusCode = 500;
   } finally {
