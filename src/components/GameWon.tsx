@@ -1,7 +1,7 @@
-import {format, fromUnixTime} from 'date-fns';
-import {createSignal, JSXElement, onMount, Show} from 'solid-js';
+import {format, parseISO} from 'date-fns';
+import {createResource, createSignal, JSXElement, onMount} from 'solid-js';
+import superagent from 'superagent';
 
-import delay from '../utils/Delay';
 import EnterButton from './EnterButton';
 import styles from './GameWon.module.css';
 
@@ -10,96 +10,89 @@ interface GameWonProps {
   restartGameCallback: () => void,
 }
 
-interface PlayerScore {
-  name: string | null;
+interface HighScore {
+  id: string | null;
+  name: string;
   timeToComplete: number;
-  timestamp: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export default function GameWon(props: GameWonProps): JSXElement {
-  let gameWonContainer: HTMLElement;
+const highScoreRow = (playerHs: HighScore, isCurrentPlayer = false): JSXElement => {
+  const formattedDate = format(parseISO(playerHs.createdAt), 'dd/MMM/yyyy');
+  let nameJsx: JSXElement;
 
-  const highScores: PlayerScore[] = [
-    {
-      name: 'Foo',
-      timeToComplete: 60,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Fook',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000 + 3000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 320,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 120,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 430,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 350,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 500,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 220,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-    {
-      name: 'Foo',
-      timeToComplete: 360,
-      timestamp: Math.ceil(Date.now()/1000),
-    },
-  ];
+  if (!isCurrentPlayer) {
+    nameJsx = <p>{playerHs.name}</p>;
+  } else {
+    nameJsx = <input class={'rounded-none px-2'}
+      value={playerHs.name} type={'text'} minlength={1} maxlength={20}/>;
+  }
 
-  const sortedHs = highScores.sort((a, b) => {
-    if (a.timeToComplete === b.timeToComplete) {
-      return a.timestamp - b.timestamp;
-    }
+  return <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
+    <div><p>{nameJsx}</p></div>
+    <div><p>{playerHs.timeToComplete}</p></div>
+    <div><p>{formattedDate}</p></div>
+  </div>;
+};
 
-    return a.timeToComplete - b.timeToComplete;
-  });
-
-  const highScoreRow = (name: string | null, timeToComplete: number, timestamp: number): JSXElement => {
-    const formattedDate = format(fromUnixTime(timestamp), 'dd/MMM/yyyy');
-    let nameJsx: JSXElement;
-    if (name !==  null) {
-      nameJsx = <p>{name}</p>;
-    } else {
-      nameJsx = <input class={'rounded-none px-2'}
-        value={'Nameless Hero'} type={'text'} minlength={1} maxlength={20}/>;
-    }
-
-    return <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
-      <div><p>{nameJsx}</p></div>
-      <div><p>{timeToComplete}</p></div>
-      <div><p>{formattedDate}</p></div>
-    </div>;
+const fetchAndSortHighScores = async (currentScore: number): Promise<{
+  currentPlayerScore: HighScore,
+  topTenPlayerScores: HighScore[],
+}> => {
+  let currentPlayerScore: HighScore = {
+    id: null,
+    name: 'Nameless Hero',
+    timeToComplete: currentScore,
+    createdAt: new Date().toDateString(),
+    updatedAt: new Date().toDateString(),
   };
+  let topTenPlayerScores: HighScore[] = [];
+  try {
+    // Save current score
+    currentPlayerScore = (await superagent
+      .post('http://localhost:3060/api/highscores') // TODO: extract env variable
+      .send({
+        name: 'Nameless Hero',
+        timeToComplete: currentScore,
+      })).body;
 
-  const [highScoresJsx, setHighScoresJsx] = createSignal<JSXElement[]>([]);
+    console.log(currentPlayerScore);
 
+    // We could be super thorough and sort these again,
+    // but they're already sorted by the BFF & that's good enough for our use-case.
+    topTenPlayerScores = (await superagent
+      .get('http://localhost:3060/api/highscores') // TODO: extract env variable
+      .query({
+        limit: 10,
+        offset: 0,
+      })).body;
+  } catch (err) {
+    // TODO: implement retrying, error handling etc.
+    //  Check if 4xx and 5xx HTTP codes throw errors or need to be handled differently.
+    console.log(err);
+  }
+
+  return {currentPlayerScore, topTenPlayerScores};
+};
+
+const buildPlayerScoresJsx = async (currentScore: number): Promise<JSXElement> => {
+  const playerHighScores = await fetchAndSortHighScores(currentScore);
+
+  return playerHighScores.topTenPlayerScores.map(hs => {
+    if (hs.id === playerHighScores.currentPlayerScore.id) {
+      return highScoreRow(hs, true);
+    }
+
+    return highScoreRow(hs);
+  });
+};
+
+export default function GameWon(props: GameWonProps): JSXElement {
+
+  const [playerScoresJsx] = createResource(props.playerTimeToComplete, buildPlayerScoresJsx);
   const [isScrolledToBottom, setIsScrolledToBottom] = createSignal(false);
+  let gameWonContainer: HTMLElement;
 
   onMount(async () => {
     setIsScrolledToBottom(
@@ -111,28 +104,12 @@ export default function GameWon(props: GameWonProps): JSXElement {
       );
     });
 
-    const playerScoreIndex = highScores.findIndex(hs => hs.timeToComplete >= props.playerTimeToComplete);
-    if (playerScoreIndex > -1) {
-      highScores[playerScoreIndex] = {
-        name: null,
-        timeToComplete: props.playerTimeToComplete,
-        timestamp: Math.ceil(Date.now()/1000),
-      };
-    }
-
     // TODO:
     //  1. Replace with data fetching… if not in onMount, then make it not async.
     //  2. Fashion a proper placeholder, like for the Enter button.
     //  3. Once the scores are loaded, if there's a new highscore, set the focus on it.
     //     Maybe highlight the row as well or make the input blink or something. Add some padding to it and style it.
     //  4. Add functions to retrieve and save the data.
-    await delay(2000);
-
-    setHighScoresJsx(sortedHs.map(hs => highScoreRow(
-      hs.name,
-      hs.timeToComplete,
-      hs.timestamp,
-    )));
   });
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -154,9 +131,11 @@ export default function GameWon(props: GameWonProps): JSXElement {
           <div class={'border-b border-slate-400 mb-2'}><p>Time to complete</p></div>
           <div class={'border-b border-slate-400 mb-2'}><p>Date</p></div>
         </div>
-        <Show when={highScoresJsx().length > 0} fallback={'Loading…'}>
-          {highScoresJsx()}
-        </Show>
+        {
+          playerScoresJsx.loading &&
+          <p>Loading…</p>
+        }
+        {playerScoresJsx()}
       </div>
       <div class={'pt-5'}>
         <h2 class={'mb-3'}>Credits</h2>

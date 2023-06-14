@@ -4,6 +4,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import console from 'console';
 import {z} from 'zod';
 
+import {allowCors} from '../../cors';
+
 const PRISMA_NOT_FOUND_ERROR_CODE = 'P2025';
 
 const prisma = new PrismaClient;
@@ -134,10 +136,10 @@ const otherRequestHandler = (response: VercelResponse) => {
     .send(null);
 };
 
-export default function handler(
+const handler = async (
   request: VercelRequest,
   response: VercelResponse,
-) {
+)=>  {
   switch (request.method) {
   case 'HEAD':
     return headRequestHandler(response);
@@ -148,4 +150,6 @@ export default function handler(
   default:
     return otherRequestHandler(response);
   }
-}
+};
+
+export default allowCors(handler);

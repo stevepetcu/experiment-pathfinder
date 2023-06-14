@@ -3,6 +3,8 @@ import type {VercelRequest, VercelResponse} from '@vercel/node';
 import * as console from 'console';
 import {z} from 'zod';
 
+import {allowCors} from '../../cors';
+
 const SMALLINT_MAX_VALUE = 32767;
 const DEFAULT_LIST_LIMIT = 10;
 const DEFAULT_OFFSET_START = 0;
@@ -121,10 +123,10 @@ const otherRequestHandler = (response: VercelResponse) => {
     .send(null);
 };
 
-export default async function handler(
+const handler = async (
   request: VercelRequest,
   response: VercelResponse,
-) {
+) => {
   switch (request.method) {
   case 'HEAD':
     return headRequestHandler(response);
@@ -135,4 +137,6 @@ export default async function handler(
   default:
     return otherRequestHandler(response);
   }
-}
+};
+
+export default allowCors(handler);

@@ -1074,9 +1074,9 @@ export default function GridMapSquarePixi(): JSXElement {
 
     setFinishedLoading(true);
     // TODO: the below used for dev, remove
-    setIsGameStarted(true);
-    setIsGameOver(true);
-    setIsGameWon(true);
+    // setIsGameStarted(true);
+    // setIsGameOver(true);
+    // setIsGameWon(true);
   });
 
   const destroyPixiApp = () => {
@@ -1169,6 +1169,7 @@ export default function GridMapSquarePixi(): JSXElement {
             isGameWon() &&
             <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
               <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
+              {/*<GameWon playerTimeToComplete={randomInt(30, 300)} restartGameCallback={restartGame}/>*/}
             </div>
           }
           {
