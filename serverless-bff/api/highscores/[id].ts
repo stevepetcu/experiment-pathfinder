@@ -97,12 +97,20 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
   let responseStatusCode = 200;
 
   try {
-    responseBody = await prisma.highScore.update({
+    const prismaResponse = await prisma.highScore.update({
       where: {
         id: schema.parse(id),
       },
       data: UpdateHighScoreRequest.parse(request.body),
     });
+
+    responseBody = {
+      publicId: prismaResponse.publicId,
+      name: prismaResponse.name,
+      timeToComplete: prismaResponse.timeToComplete,
+      createdAt: prismaResponse.createdAt,
+      updatedAt: prismaResponse.updatedAt,
+    };
   } catch (error) {
     if (error instanceof PrismaClientKnownRequestError && error.code === PRISMA_NOT_FOUND_ERROR_CODE) {
       console.info(error);

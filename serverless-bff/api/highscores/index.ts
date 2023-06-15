@@ -40,17 +40,27 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
 
   try {
     const options = GetHighScoreListRequest.parse(request.query);
-    responseBody = await prisma.highScore.findMany({
-      orderBy: [
-        {
-          timeToComplete: 'asc',
-        },
-        {
-          createdAt: 'desc',
-        },
-      ],
-      skip: options.offset || DEFAULT_OFFSET_START,
-      take: options.limit || DEFAULT_LIST_LIMIT,
+    responseBody = (
+      await prisma.highScore.findMany({
+        orderBy: [
+          {
+            timeToComplete: 'asc',
+          },
+          {
+            createdAt: 'desc',
+          },
+        ],
+        skip: options.offset || DEFAULT_OFFSET_START,
+        take: options.limit || DEFAULT_LIST_LIMIT,
+      })
+    ).map(hs => {
+      return {
+        publicId: hs.publicId,
+        name: hs.name,
+        timeToComplete: hs.timeToComplete,
+        createdAt: hs.createdAt,
+        updatedAt: hs.updatedAt,
+      };
     });
   } catch (error) {
     console.error(error);

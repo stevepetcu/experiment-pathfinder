@@ -16,7 +16,9 @@ interface GameWonProps {
 }
 
 interface HighScore {
-  id: string | null;
+  // TODO: It would be nice to share the types (this _is_ a monorepo), or try tRPC.
+  id?: string;
+  publicId: string | null;
   name: string;
   timeToComplete: number;
   createdAt: string;
@@ -28,8 +30,14 @@ const savePlayerName = async (
   inputRef: HTMLInputElement,
   btnRef: HTMLButtonElement,
 ): Promise<HighScore> => {
-  const name = inputRef.value.trim();
   let updatedPlayerScore: HighScore = playerHighScore;
+  if (!updatedPlayerScore.id) {
+    // We only want to allow updating the currentPlayer,
+    // and that's the only object that'll have the id key set.
+    return updatedPlayerScore;
+  }
+
+  const name = inputRef.value.trim();
 
   inputRef.disabled = true;
   btnRef.disabled = true;
@@ -138,14 +146,14 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
   topTenPlayerScores: HighScore[],
 }> => {
   let currentPlayerScore: HighScore = {
-    id: 'current-player',
+    publicId: 'current-player',
     name: 'Nameless Hero',
     timeToComplete: currentScore,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   // Reset the id so that, if the requests fail, we don't ask the player to enter their name:
-  let topTenPlayerScores: HighScore[] = [{...currentPlayerScore, id: '-'}];
+  let topTenPlayerScores: HighScore[] = [{...currentPlayerScore, publicId: '-'}];
 
   try {
     // Save current score
@@ -194,9 +202,12 @@ const processPlayerScore = async (currentScore: number):
   let isPlayerTopTen = playerHighScores.topTenPlayerScores.length > 1 ? false : null;
 
   const hsJsx = playerHighScores.topTenPlayerScores.map((hs, index) => {
-    if (hs.id === playerHighScores.currentPlayerScore.id) {
+    if (hs.publicId === playerHighScores.currentPlayerScore.publicId) {
       isPlayerTopTen = true;
-      return highScoreRow(index + 1, hs, true);
+      // Pass the actual current player object, containing the id we use in the backend.
+      // This should prevent accessing other player's real ids, though it doesn't prevent anyone from seeing their own.
+      // Even so the PATCH API only allows changing your name, not your score.
+      return highScoreRow(index + 1, playerHighScores.currentPlayerScore, true);
     }
 
     return highScoreRow(index + 1, hs);
