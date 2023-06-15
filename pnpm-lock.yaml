@@ -13,6 +13,9 @@ dependencies:
   '@tailwindcss/container-queries':
     specifier: ^0.1.1
     version: 0.1.1(tailwindcss@3.3.2)
+  '@types/superagent-retry-delay':
+    specifier: ^2.6.0
+    version: 2.6.0
   date-fns:
     specifier: ^2.30.0
     version: 2.30.0
@@ -28,6 +31,9 @@ dependencies:
   superagent:
     specifier: ^8.0.9
     version: 8.0.9
+  superagent-retry-delay:
+    specifier: ^2.7.2
+    version: 2.7.2(superagent@8.0.9)
 
 devDependencies:
   '@types/node':
@@ -1147,7 +1153,6 @@ packages:
 
   /@types/cookiejar@2.1.2:
     resolution: {integrity: sha512-t73xJJrvdTjXrn4jLS9VSGRbz0nUY3cl2DMGDU48lKl+HR9dbbjW2A9r3g40VA++mQpy6uuHg33gy7du2BKpog==}
-    dev: true
 
   /@types/css-font-loading-module@0.0.7:
     resolution: {integrity: sha512-nl09VhutdjINdWyXxHWN/w9zlNCfr60JUqJbd24YXUuCwgeL0TpFSdElCwb6cxfB6ybE19Gjj4g0jsgkXxKv1Q==}
@@ -1163,7 +1168,6 @@ packages:
 
   /@types/node@20.2.5:
     resolution: {integrity: sha512-JJulVEQXmiY9Px5axXHeYGLSjhkZEnD+MDPDGbCbIAbMslkKwmygtZFy1X6s/075Yo94sf8GuSlFfPzysQrWZQ==}
-    dev: true
 
   /@types/offscreencanvas@2019.7.0:
     resolution: {integrity: sha512-PGcyveRIpL1XIqK8eBsmRBt76eFgtzuPiSTyKHZxnGemp2yzGzWpjYKAfK3wIMiU7eH+851yEpiuP8JZerTmWg==}
@@ -1173,12 +1177,18 @@ packages:
     resolution: {integrity: sha512-G8hZ6XJiHnuhQKR7ZmysCeJWE08o8T0AXtk5darsCaTVsYZhhgUrq53jizaR2FvsoeCwJhlmwTjkXBY5Pn/ZHw==}
     dev: true
 
+  /@types/superagent-retry-delay@2.6.0:
+    resolution: {integrity: sha512-v0Ri+LbIlZOht/yVfKksinLuzECLQdyKJdvX5Iv8WTwKKM9wa2qZssnuWZUPnwrZxL2SsgBLNdC/YMVYkLgDKg==}
+    dependencies:
+      '@types/cookiejar': 2.1.2
+      '@types/superagent': 4.1.18
+    dev: false
+
   /@types/superagent@4.1.18:
     resolution: {integrity: sha512-LOWgpacIV8GHhrsQU+QMZuomfqXiqzz3ILLkCtKx3Us6AmomFViuzKT9D693QTKgyut2oCytMG8/efOop+DB+w==}
     dependencies:
       '@types/cookiejar': 2.1.2
       '@types/node': 20.2.5
-    dev: true
 
   /@typescript-eslint/eslint-plugin@5.59.7(@typescript-eslint/parser@5.59.7)(eslint@8.41.0)(typescript@5.0.4):
     resolution: {integrity: sha512-BL+jYxUFIbuYwy+4fF86k5vdT9lT0CNJ6HtwrIvGh0PhH8s0yy5rjaKH2fDCrz5ITHy07WCzVGNvAmjJh4IJFA==}
@@ -2960,6 +2970,14 @@ packages:
       mz: 2.7.0
       pirates: 4.0.5
       ts-interface-checker: 0.1.13
+
+  /superagent-retry-delay@2.7.2(superagent@8.0.9):
+    resolution: {integrity: sha512-nkeQAF6xg1dChhidynYqBJsuO3JhwSU4FFa20zzylQ2d6b5LFXfvviJa1R8x8e25r/i8nkdyx1AxtxNyQtQo4w==}
+    peerDependencies:
+      superagent: ^3.5.0 || ^4.0 || ^5.0 || ^6.0 || ^7.0 || ^8.0
+    dependencies:
+      superagent: 8.0.9
+    dev: false
 
   /superagent@8.0.9:
     resolution: {integrity: sha512-4C7Bh5pyHTvU33KpZgwrNKh/VQnvgtCSqPRfJAUdmrtSYePVzVg4E4OzsrbkhJj9O7SO6Bnv75K/F8XVZT8YHA==}

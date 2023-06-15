@@ -1,7 +1,12 @@
 import {format, parseISO} from 'date-fns';
-import {createResource, createSignal, JSXElement, onMount} from 'solid-js';
+import {BiRegularSave} from 'solid-icons/bi';
+import {createEffect, createResource, JSXElement} from 'solid-js';
 import superagent from 'superagent';
+import superAgentRetryDelay from 'superagent-retry-delay';
 
+import delay from '../utils/Delay';
+import randomInt from '../utils/RandomInt';
+import {formatSeconds} from '../utils/Time';
 import EnterButton from './EnterButton';
 import styles from './GameWon.module.css';
 
@@ -18,21 +23,113 @@ interface HighScore {
   updatedAt: string;
 }
 
-const highScoreRow = (playerHs: HighScore, isCurrentPlayer = false): JSXElement => {
+const savePlayerName = async (
+  playerHighScore: HighScore,
+  inputRef: HTMLInputElement,
+  btnRef: HTMLButtonElement,
+): Promise<HighScore> => {
+  const name = inputRef.value.trim();
+  let updatedPlayerScore: HighScore = playerHighScore;
+
+  inputRef.disabled = true;
+  btnRef.disabled = true;
+  btnRef.classList.add('animate-pulse-fast');
+
+  let isConfirmedRetrySaveName = false;
+
+  try {
+    // Save current score
+    updatedPlayerScore = (
+      await superAgentRetryDelay(superagent)
+        .patch(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores/${playerHighScore.id}`)
+        .timeout({
+          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
+          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
+        })
+        .retry(
+          3,
+          [400 + randomInt(100, 300), 1800 + randomInt(200, 500), 3500 + randomInt(500, 1000)],
+          [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
+        )
+        .send({name})).body;
+  } catch (err) {
+    // TODO: add a nice modal here.
+    isConfirmedRetrySaveName = confirm('We were attacked by goblins and might have lost your name. 😥\n\n' +
+      'Your score is already saved anonymously and your name might have even been saved. ' +
+      'We just couldn\'t confirm that.\n\n' +
+      'Would you like to try adding your name again?');
+  }
+
+  if (isConfirmedRetrySaveName === true) {
+    inputRef.disabled = false;
+    btnRef.disabled = false;
+    btnRef.classList.remove('animate-pulse-fast');
+  } else {
+    // I am sorry for this atrocity.
+    const contentReplacement = document.createElement('p');
+    contentReplacement.appendChild(document.createTextNode(name));
+    (inputRef.parentElement?.parentElement as unknown as HTMLDivElement).replaceWith(contentReplacement);
+  }
+
+  return updatedPlayerScore;
+};
+
+const handleUserInput = (
+  event: KeyboardEvent,
+  playerHs: HighScore,
+  inputRef: HTMLInputElement,
+  btnRef: HTMLButtonElement,
+) => {
+  const inputValue = inputRef.value.trim();
+  btnRef.disabled = inputValue === '' || inputValue === 'Nameless Hero';
+
+  if (!btnRef.disabled && event.key === 'Enter') {
+    savePlayerName(playerHs, inputRef, btnRef);
+    event.preventDefault();
+  }
+};
+
+const highScoreRow = (index: number, playerHs: HighScore, isCurrentPlayer = false): JSXElement => {
+  // TODO: ensure that the dates are converted to the local timezone?
+  //  console.log(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const formattedDate = format(parseISO(playerHs.createdAt), 'dd/MMM/yyyy');
   let nameJsx: JSXElement;
+  let inputRef: HTMLInputElement;
+  let btnRef: HTMLButtonElement;
 
   if (!isCurrentPlayer) {
     nameJsx = <p>{playerHs.name}</p>;
   } else {
-    nameJsx = <input class={'rounded-none px-2'}
-      value={playerHs.name} type={'text'} minlength={1} maxlength={20}/>;
+    nameJsx = <div class={'flex gap-x-3.5 items-center'}>
+      <div class={'w-48'}>
+        <input ref={inputRef}
+          onKeyUp={(event) => handleUserInput(
+            event,
+            playerHs,
+            inputRef,
+            btnRef,
+          )}
+          id={'current-player-hs-name-input'}
+          class={'rounded-none px-2 w-full text-slate-900'}
+          placeholder={playerHs.name} type={'text'}
+          minlength={1} maxlength={20}/>
+      </div>
+      <div class={'flex-grow text-center'}>
+        <button ref={btnRef}
+          disabled={true}
+          onClick={() => savePlayerName(playerHs, inputRef, btnRef)}
+          class={'hover:text-white disabled:text-slate-600 disabled:cursor-not-allowed'}>
+          <BiRegularSave fill={'currentColor'} class={'inline text-3xl'}/>
+        </button>
+      </div>
+    </div>;
   }
 
-  return <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
-    <div><p>{nameJsx}</p></div>
-    <div><p>{playerHs.timeToComplete}</p></div>
-    <div><p>{formattedDate}</p></div>
+  return <div class={`grid grid-cols-12 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
+    <div class={'border-b border-slate-400 mb-1 pb-1 col-span-1 text-white'}><p>{index}</p></div>
+    <div class={'border-b border-slate-400 mb-1 pb-1 col-span-5'}>{nameJsx}</div>
+    <div class={'border-b border-slate-400 mb-1 pb-1 col-span-3'}><p>{formatSeconds(playerHs.timeToComplete)}</p></div>
+    <div class={'border-b border-slate-400 mb-1 pb-1 col-span-3'}><p>{formattedDate}</p></div>
   </div>;
 };
 
@@ -41,101 +138,132 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
   topTenPlayerScores: HighScore[],
 }> => {
   let currentPlayerScore: HighScore = {
-    id: null,
+    id: 'current-player',
     name: 'Nameless Hero',
     timeToComplete: currentScore,
-    createdAt: new Date().toDateString(),
-    updatedAt: new Date().toDateString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
-  let topTenPlayerScores: HighScore[] = [];
+  // Reset the id so that, if the requests fail, we don't ask the player to enter their name:
+  let topTenPlayerScores: HighScore[] = [{...currentPlayerScore, id: '-'}];
+
   try {
     // Save current score
-    currentPlayerScore = (await superagent
-      .post(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
-      .send({
-        name: 'Nameless Hero',
-        timeToComplete: currentScore,
-      })).body;
-
-    console.log(currentPlayerScore);
+    currentPlayerScore = (
+      await superagent
+        .post(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
+        .timeout({
+          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
+          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
+        })
+        .send({
+          name: 'Nameless Hero',
+          timeToComplete: currentScore,
+        })).body;
 
     // We could be super thorough and sort these again,
     // but they're already sorted by the BFF & that's good enough for our use-case.
-    topTenPlayerScores = (await superagent
-      .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
-      .query({
-        limit: 10,
-        offset: 0,
-      })).body;
+    topTenPlayerScores = (
+      await superAgentRetryDelay(superagent)
+        .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
+        .timeout({
+          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
+          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
+        })
+        .retry(
+          3,
+          [400 + randomInt(100, 300), 1800 + randomInt(200, 500), 3500 + randomInt(500, 1000)],
+          [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
+        )
+        .query({
+          limit: 10,
+          offset: 0,
+        })).body;
   } catch (err) {
-    // TODO: implement retrying, error handling etc.
-    //  Check if 4xx and 5xx HTTP codes throw errors or need to be handled differently.
-    console.log(err);
+    // Do nothing; we could easily implement a retry button if we had time.
+    // For now, we'll simply return the current player's score, and we won't save it.
+    // TODO: add a nice retry button.
   }
 
   return {currentPlayerScore, topTenPlayerScores};
 };
 
-const buildPlayerScoresJsx = async (currentScore: number): Promise<JSXElement> => {
+const processPlayerScore = async (currentScore: number):
+  Promise<{ hsJsx: JSXElement, isPlayerTopTen: boolean | null }> => {
   const playerHighScores = await fetchAndSortHighScores(currentScore);
+  let isPlayerTopTen = playerHighScores.topTenPlayerScores.length > 1 ? false : null;
 
-  return playerHighScores.topTenPlayerScores.map(hs => {
+  const hsJsx = playerHighScores.topTenPlayerScores.map((hs, index) => {
     if (hs.id === playerHighScores.currentPlayerScore.id) {
-      return highScoreRow(hs, true);
+      isPlayerTopTen = true;
+      return highScoreRow(index + 1, hs, true);
     }
 
-    return highScoreRow(hs);
+    return highScoreRow(index + 1, hs);
   });
+
+  return {hsJsx, isPlayerTopTen};
 };
 
 export default function GameWon(props: GameWonProps): JSXElement {
 
-  const [playerScoresJsx] = createResource(props.playerTimeToComplete, buildPlayerScoresJsx);
-  const [isScrolledToBottom, setIsScrolledToBottom] = createSignal(false);
-  let gameWonContainer: HTMLElement;
+  const [playerScoresJsx] = createResource(props.playerTimeToComplete, processPlayerScore);
 
-  onMount(async () => {
-    setIsScrolledToBottom(
-      gameWonContainer.scrollTop >= (gameWonContainer.scrollHeight - gameWonContainer.offsetHeight - 35),
-    );
-    gameWonContainer.addEventListener('scroll', () => {
-      setIsScrolledToBottom(
-        gameWonContainer.scrollTop >= (gameWonContainer.scrollHeight - gameWonContainer.offsetHeight - 35),
-      );
-    });
+  createEffect(async () => {
+    let currentPlayerHsNameInput: HTMLElement | null = null;
+    if (playerScoresJsx.state === 'ready') {
+      currentPlayerHsNameInput = document.getElementById('current-player-hs-name-input');
 
-    // TODO:
-    //  1. Replace with data fetching… if not in onMount, then make it not async.
-    //  2. Fashion a proper placeholder, like for the Enter button.
-    //  3. Once the scores are loaded, if there's a new highscore, set the focus on it.
-    //     Maybe highlight the row as well or make the input blink or something. Add some padding to it and style it.
-    //  4. Add functions to retrieve and save the data.
+      if (currentPlayerHsNameInput) {
+        await (delay(100));
+        currentPlayerHsNameInput.focus();
+      }
+    }
   });
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  return <div ref={gameWonContainer}
-    class={`w-full h-full overflow-auto md:w-3/4 xl:w-1/2 px-5 py-3 m-auto 
+  return <div class={`w-full h-full overflow-auto md:w-3/4 xl:w-1/2 px-5 py-3 m-auto 
     text-left text-slate-300 ${styles.gameWonView}
     shadow-2xl border-4 border-slate-900/20`}>
     <div class={'grid grid-cols-1 gap-y-5 divide-y-2 divide-slate-600 mt-7'}>
-      <div>
+      <div class={'flex flex-col lg:flex-row gap-x-2 align-bottom'}>
         <h1>
           Congrats, you're full!
         </h1>
       </div>
       <div class={'pt-5'}>
-        <h2 class={'mb-3'}>Highscores</h2>
-        <div class={`grid grid-cols-3 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
-          <div class={'border-b border-slate-400 mb-2'}><p>Name</p></div>
-          <div class={'border-b border-slate-400 mb-2'}><p>Time to complete</p></div>
-          <div class={'border-b border-slate-400 mb-2'}><p>Date</p></div>
+        <div class={'mb-4'}>
+          <h2>
+            Highscores
+          </h2>
+          {
+            playerScoresJsx.state === 'ready' && playerScoresJsx().isPlayerTopTen === true &&
+            <p class={'text-sm'}>
+              You placed in the top ten! Enter your name below.
+            </p>
+          }
+          {
+            playerScoresJsx.state === 'ready' && playerScoresJsx().isPlayerTopTen === false &&
+            <p class={'text-sm'}>
+              You didn't place in the top ten. Try, try again!
+            </p>
+          }
+        </div>
+        <div class={`grid grid-cols-12 divide-x divide-slate-400 gap-x-3.5 ${styles.highScoresTableRow}`}>
+          <div class={'border-b border-slate-400 mb-1 pb-1 col-span-1 text-white'}><p>Rank</p></div>
+          <div class={'border-b border-slate-400 mb-1 pb-1 col-span-5 text-white'}><p>Name</p></div>
+          <div class={'border-b border-slate-400 mb-1 pb-1 col-span-3 text-white'}><p>Time</p></div>
+          <div class={'border-b border-slate-400 mb-1 pb-1 col-span-3 text-white'}><p>Date</p></div>
         </div>
         {
           playerScoresJsx.loading &&
-          <p>Loading…</p>
+          <p class={'animate-pulse-fast'}>Loading…</p>
         }
-        {playerScoresJsx()}
+        {
+          !playerScoresJsx.loading && playerScoresJsx.state === 'ready' &&
+          playerScoresJsx().hsJsx
+        }
       </div>
       <div class={'pt-5'}>
         <h2 class={'mb-3'}>Credits</h2>
@@ -147,11 +275,11 @@ export default function GameWon(props: GameWonProps): JSXElement {
         <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
       </div>
       <div class={'grid grid-cols-2 gap-y-5 divide-slate-400 pt-5'}>
-        <div>
-          <h2 class={'mt-7'}>Play again<span class={'animate-pulse-fast'}>_</span></h2>
+        <div class={'flex'}>
+          <h2 class={'place-self-end'}>Play again<span class={'animate-pulse-fast'}>_</span></h2>
         </div>
         <div class={'pt-5 justify-self-end'}>
-          <EnterButton onClick={() => props.restartGameCallback()} isDisabled={!isScrolledToBottom()}/>
+          <EnterButton onClick={() => props.restartGameCallback()} isDisabled={false} />
         </div>
       </div>
     </div>

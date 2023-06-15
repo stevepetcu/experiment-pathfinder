@@ -75,7 +75,9 @@ export default function GridMapSquarePixi(): JSXElement {
     if (finishedLoading() &&  !isGameOver()) {
       startGame();
     } else if (isGameOver()) {
-      restartGame();
+      if (document.activeElement?.id !== 'current-player-hs-name-input') {
+        restartGame();
+      }
     }
 
     event.preventDefault();
@@ -827,7 +829,6 @@ export default function GridMapSquarePixi(): JSXElement {
       const playerSprite = player.sprite;
 
       await delay(ghostSpawnWait);
-
 
       let randomGhostSpawningCoords;
       const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);

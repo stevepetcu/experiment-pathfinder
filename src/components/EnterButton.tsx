@@ -36,7 +36,7 @@ export default function EnterButton(props: EnterButtonProps): JSXElement {
       'hidden': props.isDisabled,
       'inline': !props.isDisabled,
     }}>
-      Enter <IoReturnDownBackSharp class={'inline'} />
+      Enter <IoReturnDownBackSharp fill={'currentColor'} class={'inline'} />
     </span>
   </button>;
 }
