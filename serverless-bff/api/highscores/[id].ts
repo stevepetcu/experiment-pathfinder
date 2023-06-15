@@ -4,7 +4,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import console from 'console';
 import {z} from 'zod';
 
-import {allowCors} from '../../cors';
+import {allowCors} from '../../utils/cors';
+import {rateLimit} from '../../utils/rate-limiter';
 
 const PRISMA_NOT_FOUND_ERROR_CODE = 'P2025';
 
@@ -160,4 +161,4 @@ const handler = async (
   }
 };
 
-export default allowCors(handler);
+export default rateLimit(allowCors(handler));
