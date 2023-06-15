@@ -10,7 +10,7 @@ const PRISMA_NOT_FOUND_ERROR_CODE = 'P2025';
 
 const prisma = new PrismaClient;
 
-const getRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
+const getRequestHandler = async (request: VercelRequest, response: VercelResponse): Promise<VercelResponse> => {
   const { id } = request.query;
   const schema = z.string().uuid();
 
@@ -59,7 +59,7 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
   return response.status(responseStatusCode).send(responseBody);
 };
 
-const patchRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
+const patchRequestHandler = async (request: VercelRequest, response: VercelResponse): Promise<VercelResponse> => {
   const { id } = request.query;
   const schema = z.string().uuid();
 
@@ -126,11 +126,11 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
   return response.status(responseStatusCode).send(responseBody);
 };
 
-const headRequestHandler = (response: VercelResponse) => {
+const headRequestHandler = (response: VercelResponse): VercelResponse => {
   return response.status(200).send(null);
 };
 
-const otherRequestHandler = (response: VercelResponse) => {
+const otherRequestHandler = (response: VercelResponse): VercelResponse => {
   return response.status(405)
     .appendHeader('Allow', 'HEAD,GET,PATCH')
     .send(null);
@@ -139,7 +139,7 @@ const otherRequestHandler = (response: VercelResponse) => {
 const handler = async (
   request: VercelRequest,
   response: VercelResponse,
-)=>  {
+): Promise<VercelResponse>=>  {
   switch (request.method) {
   case 'HEAD':
     return headRequestHandler(response);

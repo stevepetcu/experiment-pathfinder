@@ -60,7 +60,7 @@ const savePlayerName = async (
       'Would you like to try adding your name again?');
   }
 
-  if (isConfirmedRetrySaveName === true) {
+  if (isConfirmedRetrySaveName) {
     inputRef.disabled = false;
     btnRef.disabled = false;
     btnRef.classList.remove('animate-pulse-fast');

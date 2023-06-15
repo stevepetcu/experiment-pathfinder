@@ -11,7 +11,7 @@ const DEFAULT_OFFSET_START = 0;
 
 const prisma = new PrismaClient;
 
-const getRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
+const getRequestHandler = async (request: VercelRequest, response: VercelResponse): Promise<VercelResponse> => {
   const GetHighScoreListRequest = z.object({
     limit: z.coerce.number().min(1).max(20).optional(),
     offset: z.coerce.number().min(0).optional(),
@@ -67,7 +67,7 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
   return response.status(responseStatusCode).send(responseBody);
 };
 
-const postRequestHandler = async (request: VercelRequest, response: VercelResponse) => {
+const postRequestHandler = async (request: VercelRequest, response: VercelResponse): Promise<VercelResponse> => {
   const CreateHighScoreRequest = z.object({
     name: z.string().min(2).max(20),
     timeToComplete: z.number().min(1).max(SMALLINT_MAX_VALUE),
@@ -113,11 +113,11 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
   return response.status(responseStatusCode).send(responseBody);
 };
 
-const headRequestHandler = (response: VercelResponse) => {
+const headRequestHandler = (response: VercelResponse): VercelResponse => {
   return response.status(200).send(null);
 };
 
-const otherRequestHandler = (response: VercelResponse) => {
+const otherRequestHandler = (response: VercelResponse): VercelResponse => {
   return response.status(405)
     .appendHeader('Allow', 'HEAD,GET,POST')
     .send(null);
@@ -126,7 +126,7 @@ const otherRequestHandler = (response: VercelResponse) => {
 const handler = async (
   request: VercelRequest,
   response: VercelResponse,
-) => {
+): Promise<VercelResponse> => {
   switch (request.method) {
   case 'HEAD':
     return headRequestHandler(response);
