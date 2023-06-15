@@ -1177,9 +1177,9 @@ export default function GridMapSquarePixi(): JSXElement {
             isGameLost() &&
             <div class={'bg-slate-800 h-full w-full ' +
               'grid grid-cols-1 content-center z-30 '}>
-              <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
-                <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
-                  <div class={'flex-none'}>
+              <div class={'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto'}>
+                <div class={'grid grid-cols-1 sm:grid-cols-7 gap-y-5'}>
+                  <div class={'col-span-5'}>
                     <h1>
                       {lineGameLost()}
                       <span classList={{
@@ -1187,7 +1187,7 @@ export default function GridMapSquarePixi(): JSXElement {
                       }}>_</span>
                     </h1>
                   </div>
-                  <div class={'transition-opacity -mt-6'}
+                  <div class={'transition-opacity col-span-2 justify-self-center sm:justify-self-end mt-0 sm:-mt-6'}
                     classList={{
                       'opacity-0': !finishedTypingLineGameLost(),
                       'opacity-100': finishedTypingLineGameLost(),
@@ -1203,7 +1203,7 @@ export default function GridMapSquarePixi(): JSXElement {
             (!finishedLoading() || !isGameStarted()) &&
             <div class={'bg-slate-800 h-full w-full ' +
                    'grid grid-cols-1 content-center z-30 '}>
-              <div class={'w-4/5 sm:w-3/4 md:w-2/3 lg:w-1/2 xl:w-[40%] text-left m-auto'}>
+              <div class={'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
                 <h1>
                   <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
                     {lineOne()}
@@ -1220,9 +1220,9 @@ export default function GridMapSquarePixi(): JSXElement {
                     <span>_</span>
                   }
                 </h1>
-                <div class={'flex flex-wrap items-end justify-between gap-y-9'}>
-                  <div class={'flex-none'}>
-                    <h1 class={'text-3xl md:text-4xl leading-none text-slate-300 antialiased'}>
+                <div class={'grid grid-cols-1 sm:grid-cols-7 gap-y-5'}>
+                  <div class={'col-span-5'}>
+                    <h1>
                       {lineThree()}
                       { finishedTypingLineThree() &&
                         <span classList={{
@@ -1231,7 +1231,7 @@ export default function GridMapSquarePixi(): JSXElement {
                       }
                     </h1>
                   </div>
-                  <div class={'transition-opacity -mt-6'}
+                  <div class={'transition-opacity col-span-2 justify-self-center sm:justify-self-end mt-0 sm:-mt-6'}
                     classList={{
                       'opacity-0': !finishedTypingLineThree(),
                       'opacity-100': finishedTypingLineThree(),
