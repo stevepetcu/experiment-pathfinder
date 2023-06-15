@@ -1,6 +1,7 @@
 import {PrismaClient} from '@prisma/client';
 import type {VercelRequest, VercelResponse} from '@vercel/node';
 import * as console from 'console';
+import limiter from 'lambda-rate-limiter';
 import {z} from 'zod';
 
 import {allowCors} from '../../cors';
@@ -8,10 +9,24 @@ import {allowCors} from '../../cors';
 const SMALLINT_MAX_VALUE = 32767;
 const DEFAULT_LIST_LIMIT = 10;
 const DEFAULT_OFFSET_START = 0;
+const TEN_MINUTES = 10000;
 
 const prisma = new PrismaClient;
 
+const rateLimiter = limiter({
+  interval: TEN_MINUTES,
+  uniqueTokenPerInterval: 1, // I'm assuming this means "how many unique IPs we remember for the interval".
+});
+
 const getRequestHandler = async (request: VercelRequest, response: VercelResponse): Promise<VercelResponse> => {
+  try {
+    console.log(request.headers['x-real-ip']);
+    await rateLimiter.check(1, (request.headers['x-real-ip'] as unknown as string) || 'unknown');
+  } catch {
+    console.log('brub');
+    return response.status(429).send(null);
+  }
+
   const GetHighScoreListRequest = z.object({
     limit: z.coerce.number().min(1).max(20).optional(),
     offset: z.coerce.number().min(0).optional(),
