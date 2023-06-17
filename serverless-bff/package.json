@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: bruv you got no tests. 🤯\" && exit 1",
-    "postinstall": "prisma generate"
+    "no-postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
