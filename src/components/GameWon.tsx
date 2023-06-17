@@ -2,6 +2,7 @@ import {format, parseISO} from 'date-fns';
 import {BiRegularSave} from 'solid-icons/bi';
 import {createEffect, createResource, JSXElement} from 'solid-js';
 import superagent from 'superagent';
+import superAgentRetryDelay from 'superagent-retry-delay';
 
 import delay from '../utils/Delay';
 import randomInt from '../utils/RandomInt';
@@ -25,7 +26,7 @@ interface HighScore {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const superAgent = require('superagent-retry-delay')(superagent);
+const superAgent = superAgentRetryDelay(superagent);
 
 const savePlayerName = async (
   playerHighScore: HighScore,

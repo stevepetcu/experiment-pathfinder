@@ -57,7 +57,7 @@ export default function GridMapSquarePixi(): JSXElement {
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
   const baseSpotLightRadius = cellWidth * 6;
-  let spotLightRadius = cellWidth * 6;
+  let spotlightRadius = cellWidth * 6;
   const playerBaseRunningFps = 7 / 20;
   const playerBaseLookingAroundFps = 5 / 250;
   const critterBaseRunningFps = 4 / 20;
@@ -334,7 +334,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     // zIndex apparently doesn't matter, so we must add these "below" the fog of way & light layers
     // Critter stuff
-    const critterUIUpdater = (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
+    const critterUpdater = async (critterInstance: Character, ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite || isGameOver()) {
         return;
       }
@@ -345,12 +345,7 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      // if (critterInstance.isTriggered) {
-      //   critterSprite.sprite.tint = 'red';
-      // }
-
       if (!critterInstance.isAlive) {
-        // critterSprite.sprite.tint = 'grey';
         critterSprite.sprite.alpha = 0;
         ssmb.removeSubscriber(critterInstance.id);
         return;
@@ -420,80 +415,79 @@ export default function GridMapSquarePixi(): JSXElement {
       critterSprite.sprite.play();
 
       // TODO: extract this whole method
-      // Update critter visibility
+      // Critter-player interactions
       const distanceToPlayer = calcDiagonalDistance(
         {x: critterSprite.sprite.x, y: critterSprite.sprite.y},
         {x: playerSprite.x, y: playerSprite.y},
       );
 
-      if (distanceToPlayer >= spotLightRadius) {
+      if (distanceToPlayer >= spotlightRadius) {
         critterSprite.sprite.alpha = 0;
         critterInstance.setIsTriggered(false);
-        // critterSprite.sprite.tint = new Color('rgb(255,142,155)'); // TODO: clean up.
-        // critterSprite.sprite.tint = 'red';
-      }
-      if (distanceToPlayer < spotLightRadius) {
+      } else {
         critterSprite.sprite.alpha = 0.35;
-        // critterSprite.sprite.tint = 'lime';
-      }
-      if (distanceToPlayer < spotLightRadius * 0.7) {
-        critterSprite.sprite.alpha = 1;
+        if (distanceToPlayer < spotlightRadius * 0.7) {
+          critterSprite.sprite.alpha = 1;
+          if (distanceToPlayer < spotlightRadius * 0.5) {
+            if (
+              critterInstance.movementState.action === 'running'
+              && critterInstance.willMeet(player)
+            ) {
+              // The only scenario when this happens should be that the player
+              // character is "looking around" and the critter is running.
+              // Stop critter from moving in the initial direction.
+              critterInstance.stopMoving();
+              await delay(500);
+              critterInstance.setIsTriggered(true);
+              critterInstance.isChangingDirection = true;
+              critterInstance.moveAwayFrom(
+                {x: player.x, y: player.y},
+                {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
+              );
+            }
+            if (distanceToPlayer < spotlightRadius * 0.1) {
+              if (!crittersEaten.includes(critterInstance.id)) {
+                // Player eats the critter.
+                critterInstance.setIsAlive(false);
+                crittersEaten.push(critterInstance.id);
 
-        // critterSprite.sprite.tint = 'yellow';
-      }
-      if (distanceToPlayer < spotLightRadius * 0.5) {
-        // critterSprite.sprite.tint = 'blue';
+                setNumberOfCrittersEaten(n => n + 1);
+                setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
+                setIsGameOver(isGameWon());
 
-        if (
-          // player.movementState.action === 'lookingAround'
-          critterInstance.movementState.action === 'running'
-          && critterInstance.willMeet(player)
-          // && !critterInstance.isTriggered
-        ) {
-          // Stop critter from moving in the initial direction.
-          critterInstance.stopMoving();
-        }
-      }
-      if (distanceToPlayer < spotLightRadius * 0.1) {
-        // critterSprite.sprite.tint = 'blue';
-        if (!crittersEaten.includes(critterInstance.id)) {
-          critterInstance.setIsAlive(false);
-          crittersEaten.push(critterInstance.id);
+                const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
+                if (blobFishBuffIndex < 0) {
+                  playerBuffs.push(getBlobfishBuff());
+                } else {
+                  playerBuffs[blobFishBuffIndex].stacks++;
+                }
 
-          setNumberOfCrittersEaten(n => n + 1);
-          setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
-          setIsGameOver(isGameWon());
+                let speedBoost = 0;
+                let sightBoost = 1;
+                for (const buff of playerBuffs) {
+                  speedBoost += (buff.traits.speed || 0) * buff.stacks;
+                  sightBoost += (buff.traits.sight || 0) * buff.stacks;
+                }
 
-          const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
-          if (blobFishBuffIndex < 0) {
-            playerBuffs.push(getBlobfishBuff());
-          } else {
-            playerBuffs[blobFishBuffIndex].stacks++;
+                playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+                player.movementState.speed = playerSpeed;
+
+                light.scale.set(sightBoost, sightBoost);
+                light2.scale.set(sightBoost, sightBoost);
+                light3.scale.set(sightBoost, sightBoost);
+                spotlightRadius = baseSpotLightRadius * sightBoost;
+
+                setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
+
+                critterSprite.sprite.destroy();
+              }
+            }
           }
-
-          let speedBoost = 0;
-          let sightBoost = 1;
-          for (const buff of playerBuffs) {
-            speedBoost += (buff.traits.speed || 0) * buff.stacks;
-            sightBoost += (buff.traits.sight || 0) * buff.stacks;
-          }
-
-          playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
-          player.movementState.speed = playerSpeed;
-
-          light.scale.set(sightBoost, sightBoost);
-          light2.scale.set(sightBoost, sightBoost);
-          light3.scale.set(sightBoost, sightBoost);
-          spotLightRadius = baseSpotLightRadius * sightBoost;
-
-          setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
-
-          critterSprite.sprite.destroy();
         }
       }
     };
 
-    const playerUpdaterForCritters = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
+    const playerUpdaterForCritters = async (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerInstance.isAlive || isGameOver()) {
         return;
       }
@@ -518,84 +512,83 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
 
-        if (distanceToPlayer >= spotLightRadius) {
+        if (distanceToPlayer >= spotlightRadius) {
           critterSprite.sprite.alpha = 0;
-          // critterSprite.sprite.tint = new Color('rgb(255,142,155)');
           critterInstance.setIsTriggered(false);
-
-          // critterSprite.sprite.tint = 'red';
-        }
-        if (distanceToPlayer < spotLightRadius) {
+        } else {
           critterSprite.sprite.alpha = 0.35;
-          // critterSprite.sprite.tint = 'lime';
-        }
-        if (distanceToPlayer < spotLightRadius * 0.7) {
-          critterSprite.sprite.alpha = 1;
 
-          // critterSprite.sprite.tint = 'yellow';
-        }
-        if (distanceToPlayer < spotLightRadius * 0.5) {
-          // critterSprite.sprite.tint = 'blue';
+          if (distanceToPlayer < spotlightRadius * 0.7) {
+            critterSprite.sprite.alpha = 1;
 
-          if (
-            critterInstance.movementState.action === 'running'
-            && !critterInstance.isTriggered
-          ) {
-            critterInstance.stopMoving();
-          }
+            if (distanceToPlayer < spotlightRadius * 0.5) {
+              if (
+                critterInstance.movementState.action === 'running'
+                && !critterInstance.isTriggered
+              ) {
+                critterInstance.stopMoving();
+                critterInstance.setIsTriggered(true);
+                critterInstance.stopMoving();
+                await delay(500);
+                critterInstance.setIsTriggered(true);
+                critterInstance.isChangingDirection = true;
+                critterInstance.moveAwayFrom(
+                  {x: player.x, y: player.y},
+                  {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
+                );
+              }
 
-          if (
-            critterInstance.movementState.action === 'lookingAround'
-          ) {
-            // Prevent critter from freaking out too often and trying to get random escape points all the time.
-            critterInstance.setIsTriggered(true);
-            //Stop critter from moving in the initial direction.
-            critterInstance.isChangingDirection = true;
-            critterInstance.moveAwayFrom(
-              {x: playerInstance.x, y: playerInstance.y},
-              {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
-            );
-          }
-        }
-        if (distanceToPlayer < spotLightRadius * 0.1) {
-          console.log((critterInstance.isTriggered));
-          // critterSprite.sprite.tint = 'blue';
-          if (!crittersEaten.includes(critterInstance.id)) {
-            critterInstance.setIsAlive(false);
-            crittersEaten.push(critterInstance.id);
+              if (
+                critterInstance.movementState.action === 'lookingAround'
+              ) {
+                // Prevent critter from freaking out too often and trying to get random escape points all the time.
+                critterInstance.moveAwayFrom(
+                  {x: playerInstance.x, y: playerInstance.y},
+                  {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
+                );
+              }
 
-            // Could also be "setNumberOfCrittersEaten(n => ++n);"
-            // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
-            // setNumberOfCrittersEaten(n => n++); - b/c n++ returns before it adds? Spent 30 min debugging that 💩.
-            setNumberOfCrittersEaten(n => n + 1);
-            setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
-            setIsGameOver(isGameWon());
+              if (distanceToPlayer < spotlightRadius * 0.1) {
+                console.log((critterInstance.isTriggered));
+                if (!crittersEaten.includes(critterInstance.id)) {
+                  critterInstance.setIsAlive(false);
+                  crittersEaten.push(critterInstance.id);
 
-            const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
-            if (blobFishBuffIndex < 0) {
-              playerBuffs.push(getBlobfishBuff());
-            } else {
-              playerBuffs[blobFishBuffIndex].stacks++;
+                  // Could also be "setNumberOfCrittersEaten(n => ++n);"
+                  // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
+                  // setNumberOfCrittersEaten(n => n++); - b/c n++ returns before it adds? Spent 30 min debugging that 💩.
+                  setNumberOfCrittersEaten(n => n + 1);
+                  setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
+                  setIsGameOver(isGameWon());
+
+                  const blobFishBuffIndex = playerBuffs.findIndex(buff => buff.name === BuffName.BLOBFISH);
+                  if (blobFishBuffIndex < 0) {
+                    playerBuffs.push(getBlobfishBuff());
+                  } else {
+                    playerBuffs[blobFishBuffIndex].stacks++;
+                  }
+
+                  let speedBoost = 0;
+                  let sightBoost = 1;
+                  for (const buff of playerBuffs) {
+                    speedBoost += (buff.traits.speed || 0) * buff.stacks;
+                    sightBoost += (buff.traits.sight || 0) * buff.stacks;
+                  }
+
+                  playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
+                  player.movementState.speed = playerSpeed;
+
+                  light.scale.set(sightBoost, sightBoost);
+                  light2.scale.set(sightBoost, sightBoost);
+                  light3.scale.set(sightBoost, sightBoost);
+                  spotlightRadius = baseSpotLightRadius * sightBoost;
+
+                  setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
+
+                  critterSprite.sprite.destroy();
+                }
+              }
             }
-
-            let speedBoost = 0;
-            let sightBoost = 1;
-            for (const buff of playerBuffs) {
-              speedBoost += (buff.traits.speed || 0) * buff.stacks;
-              sightBoost += (buff.traits.sight || 0) * buff.stacks;
-            }
-
-            playerSpeed.ms = basePlayerSpeed.ms - speedBoost;
-            player.movementState.speed = playerSpeed;
-
-            light.scale.set(sightBoost, sightBoost);
-            light2.scale.set(sightBoost, sightBoost);
-            light3.scale.set(sightBoost, sightBoost);
-            spotLightRadius = baseSpotLightRadius * sightBoost;
-
-            setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
-
-            critterSprite.sprite.destroy();
           }
         }
       }
@@ -634,13 +627,15 @@ export default function GridMapSquarePixi(): JSXElement {
       critterSprites.push({id: critter.id, sprite: critterSprite});
 
       critterSSMB
-        .addSubscriber({subscriptionId: critter.id, callback: critterUIUpdater});
+        .addSubscriber({subscriptionId: critter.id, callback: critterUpdater});
     }
 
     critterBehaviour = async (critter: Character, playerInstance: Character) => {
       if (!critter.isAlive || isGameOver()) {
         return;
       }
+
+      await delay(randomInt(1500, 2000));
 
       if (critter.movementState.action === 'lookingAround') {
         const randomLocation = generateRandomCoordsInRandomRoom(
@@ -653,25 +648,17 @@ export default function GridMapSquarePixi(): JSXElement {
 
           if (critter.isTriggered) {
             speed.ms *= 0.5;
-            await critter.moveTo(
-              generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
-              speed,
-              critter.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y),
-            );
-          } else {
-            await critter.moveTo(
-              generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
-              speed,
-            );
           }
 
-          // Once destination was reached, wait 1 second plus a jitter before moving again.
-          await delay(randomInt(2500, 4000));
-        } else {
-          await delay(randomInt(150, 350));
+          await critter.moveTo(
+            generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
+            speed,
+            critter.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y),
+          );
+
+          // Once destination was reached, wait a little bit before calling the fn recursively again.
+          await delay(randomInt(300, 500));
         }
-      } else {
-        await delay(randomInt(400, 600));
       }
 
       await critterBehaviour(critter, playerInstance);
@@ -719,16 +706,16 @@ export default function GridMapSquarePixi(): JSXElement {
         {x: playerSprite.x, y: playerSprite.y},
       );
 
-      if (distanceToPlayer >= spotLightRadius) {
+      if (distanceToPlayer >= spotlightRadius) {
         ghostSprite.alpha = 0;
       }
-      if (distanceToPlayer < spotLightRadius) {
+      if (distanceToPlayer < spotlightRadius) {
         ghostSprite.alpha = 0.35;
       }
-      if (distanceToPlayer < spotLightRadius * 0.7) {
+      if (distanceToPlayer < spotlightRadius * 0.7) {
         ghostSprite.alpha = 1;
       }
-      if (distanceToPlayer < spotLightRadius * 0.1 && ghostInstance.instance.isAlive) {
+      if (distanceToPlayer < spotlightRadius * 0.1 && ghostInstance.instance.isAlive) {
         console.log('Player caught.');
         player.setIsAlive(false);
         setIsGameLost(true);
@@ -754,16 +741,16 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: playerInstance.x * cellWidth, y: playerInstance.y * cellWidth},
         );
 
-        if (distanceToPlayer >= spotLightRadius) {
+        if (distanceToPlayer >= spotlightRadius) {
           ghostSprite.alpha = 0;
         }
-        if (distanceToPlayer < spotLightRadius) {
+        if (distanceToPlayer < spotlightRadius) {
           ghostSprite.alpha = 0.35;
         }
-        if (distanceToPlayer < spotLightRadius * 0.7) {
+        if (distanceToPlayer < spotlightRadius * 0.7) {
           ghostSprite.alpha = 1;
         }
-        if (distanceToPlayer < spotLightRadius * 0.1 && ghost.instance.isAlive) {
+        if (distanceToPlayer < spotlightRadius * 0.1 && ghost.instance.isAlive) {
           console.log('Player caught.');
           player.setIsAlive(false);
           setIsGameLost(true);
@@ -865,13 +852,13 @@ export default function GridMapSquarePixi(): JSXElement {
         {x: playerSprite.x, y: playerSprite.y},
       );
 
-      if (distanceToPlayer >= spotLightRadius) {
+      if (distanceToPlayer >= spotlightRadius) {
         ghostSprite.alpha = 0;
       }
-      if (distanceToPlayer < spotLightRadius) {
+      if (distanceToPlayer < spotlightRadius) {
         ghostSprite.alpha = 0.35;
       }
-      if (distanceToPlayer < spotLightRadius * 0.7) {
+      if (distanceToPlayer < spotlightRadius * 0.7) {
         ghostSprite.alpha = 1;
       }
 
@@ -1035,17 +1022,17 @@ export default function GridMapSquarePixi(): JSXElement {
           {x: canOfMilkSprite.x, y: canOfMilkSprite.y},
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
-        if (distanceToPlayer >= spotLightRadius) {
+        if (distanceToPlayer >= spotlightRadius) {
           canOfMilkSprite.alpha = 0;
         }
-        if (distanceToPlayer < spotLightRadius) {
+        if (distanceToPlayer < spotlightRadius) {
           canOfMilkSprite.alpha = 0.35;
         }
-        if (distanceToPlayer < spotLightRadius * 0.7) {
+        if (distanceToPlayer < spotlightRadius * 0.7) {
           canOfMilkSprite.alpha = 1;
         }
         // TODO: consider using sprite's bounds intersection/hit boxes?
-        if (distanceToPlayer < spotLightRadius * 0.1) {
+        if (distanceToPlayer < spotlightRadius * 0.1) {
           playerBuffs.push(getMilkCanBuff());
 
           let speedBoost = 0;
@@ -1247,7 +1234,7 @@ export default function GridMapSquarePixi(): JSXElement {
             finishedLoading() && isGameStarted() && !isGameOver() &&
             <>
               <div class={'absolute top-5 left-[3%] text-left z-20 ' +
-                'p-3 bg-slate-700/50 border-2 border-slate-900 ' +
+                'p-3 bg-slate-700/50 border-2 border-slate-800 ' +
                 'outline-double outline-2 outline-offset-2 outline-slate-700 '}>
                 <div>
                   <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}

@@ -48,7 +48,7 @@ export interface Character {
   setIsAlive: (isAlive: boolean) => void;
   isTriggered: boolean; // TODO: a generic flag to use for critters and ghosts because I'm too lazy to do a better solution.
   setIsTriggered: (state: boolean) => void;
-  willMeet: (otherCharacter: Character) => boolean;
+  willMeet: (otherCharacter: Character) => boolean | undefined;
   currentPath: GridCell[];
   stopMoving: () => void;
 }
@@ -85,7 +85,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     // updateGameState();
   };
 
-  const willMeet = (otherCharacter: Character): boolean => {
+  const willMeet = (otherCharacter: Character): boolean | undefined => {
     if (otherCharacter.movementState.action === 'lookingAround') {
       const otherCharCell = pathfinder.getGridCellAt(otherCharacter.x, otherCharacter.y);
       const result = _this.currentPath.includes(otherCharCell);
@@ -109,7 +109,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     }
 
     // Don't handle both characters moving.
-    return false;
+    return undefined;
   };
 
   const moveToCoords = (x: number, y:number) => {
