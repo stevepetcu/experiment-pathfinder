@@ -2,7 +2,6 @@ import {format, parseISO} from 'date-fns';
 import {BiRegularSave} from 'solid-icons/bi';
 import {createEffect, createResource, JSXElement} from 'solid-js';
 import superagent from 'superagent';
-import superAgentRetryDelay from 'superagent-retry-delay';
 
 import delay from '../utils/Delay';
 import randomInt from '../utils/RandomInt';
@@ -24,6 +23,9 @@ interface HighScore {
   createdAt: string;
   updatedAt: string;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const superAgent = require('superagent-retry-delay')(superagent);
 
 const savePlayerName = async (
   playerHighScore: HighScore,
@@ -48,7 +50,7 @@ const savePlayerName = async (
   try {
     // Save current score
     updatedPlayerScore = (
-      await superAgentRetryDelay(superagent)
+      await superAgent
         .patch(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores/${playerHighScore.id}`)
         .timeout({
           response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
@@ -172,7 +174,7 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
     // We could be super thorough and sort these again,
     // but they're already sorted by the BFF & that's good enough for our use-case.
     topTenPlayerScores = (
-      await superAgentRetryDelay(superagent)
+      await superAgent
         .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
         .timeout({
           response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
