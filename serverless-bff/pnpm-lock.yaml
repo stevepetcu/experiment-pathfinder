@@ -4,9 +4,6 @@ dependencies:
   '@prisma/client':
     specifier: 4.15.0
     version: 4.15.0(prisma@4.15.0)
-  '@types/lambda-rate-limiter':
-    specifier: ^3.0.0
-    version: 3.0.0
   lambda-rate-limiter:
     specifier: ^3.0.1
     version: 3.0.1
@@ -15,6 +12,9 @@ dependencies:
     version: 3.21.4
 
 devDependencies:
+  '@types/lambda-rate-limiter':
+    specifier: ^3.0.0
+    version: 3.0.0
   '@types/node':
     specifier: ^20.3.1
     version: 20.3.1
@@ -159,7 +159,7 @@ packages:
 
   /@types/lambda-rate-limiter@3.0.0:
     resolution: {integrity: sha512-bKej2hv/zn16vb0r86Y/CGZ49nfgFP8DqWQCv28yHWljoe0xNL2aMG+4WXeUFyQe48hmJu/21xhvrlDm2OlFjw==}
-    dev: false
+    dev: true
 
   /@types/node-fetch@2.6.3:
     resolution: {integrity: sha512-ETTL1mOEdq/sxUtgtOhKjyB2Irra4cjxksvcMUR5Zr4n+PxVhsCD9WS46oPbHL3et9Zde7CNRr+WUNlcHvsX+w==}
