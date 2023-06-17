@@ -1,6 +1,5 @@
 import {UUID} from 'crypto';
 
-import delay from '../utils/Delay';
 import {calcVectorFromPointAToPointB} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
@@ -33,8 +32,9 @@ export interface Character {
   id: UUID,
   x: Coords['x'];
   y: Coords['y'];
-  moveTo: (cell: GridCell, speed: Speed, avoidCell?: GridCell) => void;
+  moveTo: (cell: GridCell, speed: Speed, avoidCell?: GridCell) => { spawn: number, tout: NodeJS.Timeout } | null;
   moveAwayFrom: (coords: Coords, speed: Speed) => void; // TODO: refactor these methods so they're more consistent w/ each other.
+  moveTimeout: { spawn: number, tout: NodeJS.Timeout } | null;
   pathfinder: Pathfinder;
   isChangingDirection: boolean;
   movementState: {
@@ -148,7 +148,12 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     updateGameState();
   };
 
-  const moveTo = async (cell: GridCell, speed = DEFAULT_SPEED, avoidCell?: GridCell) => {
+  const moveTo = (
+    cell: GridCell,
+    speed = DEFAULT_SPEED,
+    avoidCell?: GridCell,
+    tout?: NodeJS.Timeout,
+  ): { spawn: number, tout: NodeJS.Timeout } | null => {
     // TODO: move isChangingDirection = true here?
     _this.movementState.speed = speed;
 
@@ -160,7 +165,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
       )
       .reverse();
 
-    await takePath(_this.currentPath, true);
+    return takePath(_this.currentPath, true, undefined, tout);
   };
 
   const moveAwayFrom = async (coords: Coords, speed = DEFAULT_SPEED) => {
@@ -200,8 +205,19 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     await moveTo(cellToMoveTo, speed);
   };
 
-  const takePath = async (path: GridCell[], isNewPath: boolean): Promise<void> => {
-    await delay(_this.movementState.speed.ms);
+  const takePath = (
+    path: GridCell[],
+    isNewPath: boolean,
+    spawn?: number,
+    tout?: NodeJS.Timeout,
+  ): { spawn: number, tout: NodeJS.Timeout } | null => {
+    // await delay(_this.movementState.speed.ms);
+
+    // console.log(`Running spawn ${spawn}…`);
+
+    if (!spawn) {
+      spawn = randomInt(0, 100);
+    }
 
     if (isNewPath) {
       _this.isChangingDirection = false;
@@ -212,29 +228,43 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
 
     if (nextStep === undefined) {
       console.debug('Unreachable, or reached position!');
+      clearTimeout(tout);
+      // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
-      return;
+      return null;
     }
 
     if (isAt(nextStep)) {
       console.debug('Already at location.');
+      clearTimeout(tout);
+      // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
-      return;
+      return null;
     }
 
     if (!nextStep.isAccessible()) {
       console.debug('Inaccessible cell.');
+      clearTimeout(tout);
+      // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
-      return;
+      return null;
     }
 
     if (_this.isChangingDirection && !isNewPath) {
-      return;
+      return null;
     }
 
     moveToCoords(nextStep.x, nextStep.y);
 
-    await takePath(path, false);
+
+    tout = setTimeout(
+      () => takePath(path, false, spawn),
+      _this.movementState.speed.ms,
+    );
+
+    _this.moveTimeout = { spawn, tout };
+
+    return { spawn, tout };
   };
 
   // TODO: refactor models – most of them don't need a _this (unless I need to call another object on _this object).
@@ -244,6 +274,8 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     x: startingCoords.x,
     y: startingCoords.y,
     moveTo,
+    moveAwayFrom,
+    moveTimeout: null,
     pathfinder,
     isChangingDirection: false,
     movementState,
@@ -254,7 +286,6 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     willMeet,
     currentPath,
     stopMoving,
-    moveAwayFrom,
   };
 
   updateGameState();

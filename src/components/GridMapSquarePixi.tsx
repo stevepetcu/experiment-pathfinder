@@ -56,6 +56,13 @@ export default function GridMapSquarePixi(): JSXElement {
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
+  // const numberOfCritters = 0;
+
+  // const numberOfGhosts = 2;
+  const numberOfGhosts = 0;
+  const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000};
+  const subsequentGhostMsWaitUntilSpawn = {base: 6000, jitter: 1000};
+
   const baseSpotLightRadius = cellWidth * 6;
   let spotlightRadius = cellWidth * 6;
   const playerBaseRunningFps = 7 / 20;
@@ -122,19 +129,16 @@ export default function GridMapSquarePixi(): JSXElement {
 
 
   const critters: Character[] = [];
-  const critterSprites: { id: UUID, sprite: AnimatedSprite }[] = []; // TODO: replace with animated sprites
-  const crittersEaten: Character['id'][] = [];
+  const critterSprites: Map<UUID, AnimatedSprite> = new Map();
+  const crittersEaten: Set<Character> = new Set();
   let critterTextures: CritterTextureMap;
   let critterBehaviour: (critter: Character, playerInstance: Character) => void;
 
-  const ghosts: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }[] = [];
+  const ghosts: Map<UUID, { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }>
+    = new Map();
   let ghostTextures: GhostTextureMap;
-  // const numberOfGhosts = 2;
-  const numberOfGhosts = 0;
-  const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000}; // TODO: increase these numbers.
-  const subsequentGhostMsWaitUntilSpawn = {base: 6000, jitter: 1000}; // TODO: increase these numbers.
   let ghostBehaviour: (
-    ghost: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed }, // TODO: replace with animated sprites
+    ghost: { instance: Character, sprite: AnimatedSprite, msWaitUntilSpawn: number, speed: Speed },
     player: { instance: Character, sprite: AnimatedSprite },
   ) => void;
 
@@ -307,6 +311,7 @@ export default function GridMapSquarePixi(): JSXElement {
     playerSprite.animationSpeed = playerBaseLookingAroundFps;
     playerSprite.play();
     playerSprite.width = cellWidth;
+    // noinspection JSSuspiciousNameCombination
     playerSprite.height = cellWidth;
     playerSprite.x = (player?.x || -1) * playerSpeed.px;
     playerSprite.y = (player?.y || -1) * playerSpeed.px;
@@ -324,6 +329,7 @@ export default function GridMapSquarePixi(): JSXElement {
     dustSprite.animationSpeed = 5 / 10;
     dustSprite.loop = false;
     dustSprite.width = cellWidth;
+    // noinspection JSSuspiciousNameCombination
     dustSprite.height = cellWidth;
     dustSprite.x = (player?.x || -1) * playerSpeed.px;
     dustSprite.y = (player?.y || -1) * playerSpeed.px - playerSpeed.px * 0.15;
@@ -339,14 +345,14 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
+      const critterSprite = critterSprites.get(critterInstance.id);
 
-      if (!critterSprite || critterSprite.sprite.destroyed) {
+      if (!critterSprite || critterSprite.destroyed) {
         return;
       }
 
       if (!critterInstance.isAlive) {
-        critterSprite.sprite.alpha = 0;
+        critterSprite.alpha = 0;
         ssmb.removeSubscriber(critterInstance.id);
         return;
       }
@@ -358,35 +364,35 @@ export default function GridMapSquarePixi(): JSXElement {
         critterBaseRunningFps * runningFpsDivider :
         critterBaseLookingAroundFps; // has to be a multiple of the number of textures.
 
-      critterSprite.sprite.y = critterInstance.y * critterSpeed.px + cellWidth/4;
+      critterSprite.y = critterInstance.y * critterSpeed.px + cellWidth/4;
 
       if (ms.action === 'running') {
         switch (ms.direction) {
         case MovementDirection.N:
         case MovementDirection.NW:
         case MovementDirection.W:
-          critterSprite.sprite.textures = critterTextures.running.north;
-          critterSprite.sprite.scale.x = Math.abs(critterSprite.sprite.scale.x);
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
+          critterSprite.textures = critterTextures.running.north;
+          critterSprite.scale.x = Math.abs(critterSprite.scale.x);
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.NE:
         case MovementDirection.E:
-          critterSprite.sprite.textures = critterTextures.running.north;
-          critterSprite.sprite.scale.x = -1 * Math.abs(critterSprite.sprite.scale.x);
+          critterSprite.textures = critterTextures.running.north;
+          critterSprite.scale.x = -1 * Math.abs(critterSprite.scale.x);
           // Translate the sprite right because the pixijs pivot makes no sense.
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         case MovementDirection.S:
         case MovementDirection.SW:
-          critterSprite.sprite.textures = critterTextures.running.south;
-          critterSprite.sprite.scale.x = Math.abs(critterSprite.sprite.scale.x);
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
+          critterSprite.textures = critterTextures.running.south;
+          critterSprite.scale.x = Math.abs(critterSprite.scale.x);
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.SE:
-          critterSprite.sprite.textures = critterTextures.running.south;
-          critterSprite.sprite.scale.x = -1 * Math.abs(critterSprite.sprite.scale.x);
+          critterSprite.textures = critterTextures.running.south;
+          critterSprite.scale.x = -1 * Math.abs(critterSprite.scale.x);
           // Translate the sprite right because the pixijs pivot makes no sense.
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         }
       } else {
@@ -396,38 +402,38 @@ export default function GridMapSquarePixi(): JSXElement {
         case MovementDirection.W:
         case MovementDirection.S:
         case MovementDirection.SW:
-          critterSprite.sprite.textures = critterTextures.lookingAround;
-          critterSprite.sprite.scale.set(Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
+          critterSprite.textures = critterTextures.lookingAround;
+          critterSprite.scale.set(Math.abs(critterSprite.scale.x), critterSprite.scale.y);
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth/4;
           break;
         case MovementDirection.NE:
         case MovementDirection.E:
         case MovementDirection.SE:
-          critterSprite.sprite.textures = critterTextures.lookingAround;
-          critterSprite.sprite.scale.set(-1 * Math.abs(critterSprite.sprite.scale.x), critterSprite.sprite.scale.y);
+          critterSprite.textures = critterTextures.lookingAround;
+          critterSprite.scale.set(-1 * Math.abs(critterSprite.scale.x), critterSprite.scale.y);
           // Translate the sprite right because the pixijs pivot makes no sense.
-          critterSprite.sprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
+          critterSprite.x = critterInstance.x * critterSpeed.px + cellWidth * 0.6;
           break;
         }
       }
 
-      critterSprite.sprite.animationSpeed = fps;
-      critterSprite.sprite.play();
+      critterSprite.animationSpeed = fps;
+      critterSprite.play();
 
       // TODO: extract this whole method
       // Critter-player interactions
       const distanceToPlayer = calcDiagonalDistance(
-        {x: critterSprite.sprite.x, y: critterSprite.sprite.y},
+        {x: critterSprite.x, y: critterSprite.y},
         {x: playerSprite.x, y: playerSprite.y},
       );
 
       if (distanceToPlayer >= spotlightRadius) {
-        critterSprite.sprite.alpha = 0;
+        critterSprite.alpha = 0;
         critterInstance.setIsTriggered(false);
       } else {
-        critterSprite.sprite.alpha = 0.35;
+        critterSprite.alpha = 0.35;
         if (distanceToPlayer < spotlightRadius * 0.7) {
-          critterSprite.sprite.alpha = 1;
+          critterSprite.alpha = 1;
           if (distanceToPlayer < spotlightRadius * 0.5) {
             if (
               critterInstance.movementState.action === 'running'
@@ -437,19 +443,26 @@ export default function GridMapSquarePixi(): JSXElement {
               // character is "looking around" and the critter is running.
               // Stop critter from moving in the initial direction.
               critterInstance.stopMoving();
-              await delay(500);
               critterInstance.setIsTriggered(true);
+              await delay(450);
               critterInstance.isChangingDirection = true;
+              await delay(50);
+
+              if (critterInstance.moveTimeout) {
+                console.log(`Clearing critterInstance tout: ${critterInstance.moveTimeout.spawn}…`);
+                clearTimeout(critterInstance.moveTimeout.tout);
+              }
+
               critterInstance.moveAwayFrom(
                 {x: player.x, y: player.y},
                 {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
               );
             }
             if (distanceToPlayer < spotlightRadius * 0.1) {
-              if (!crittersEaten.includes(critterInstance.id)) {
+              if (!crittersEaten.has(critterInstance)) {
                 // Player eats the critter.
                 critterInstance.setIsAlive(false);
-                crittersEaten.push(critterInstance.id);
+                crittersEaten.add(critterInstance);
 
                 setNumberOfCrittersEaten(n => n + 1);
                 setIsGameWon(numberOfCrittersEaten() === numberOfCritters);
@@ -479,7 +492,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
                 setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
 
-                critterSprite.sprite.destroy();
+                critterSprite.destroy();
               }
             }
           }
@@ -492,34 +505,34 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      for (let i = 0; i < critters.length; i++) { // TODO: simply find the critterSprites directly (that are not destroyed)?
+      for (let i = 0; i < critters.length; i++) {
         const critterInstance = critters[i];
 
         if (!critterInstance || !critterInstance.isAlive) {
           continue;
         }
 
-        const critterSprite = critterSprites.find(cs => cs.id === critterInstance.id);
+        const critterSprite = critterSprites.get(critterInstance.id);
 
-        if (!critterSprite || critterSprite.sprite.destroyed) {
+        if (!critterSprite || critterSprite.destroyed) {
           return;
         }
 
         // TODO: extract this whole method
         // Make  critter sprite visible
         const distanceToPlayer = calcDiagonalDistance(
-          {x: critterSprite.sprite.x, y: critterSprite.sprite.y},
+          {x: critterSprite.x, y: critterSprite.y},
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
 
         if (distanceToPlayer >= spotlightRadius) {
-          critterSprite.sprite.alpha = 0;
+          critterSprite.alpha = 0;
           critterInstance.setIsTriggered(false);
         } else {
-          critterSprite.sprite.alpha = 0.35;
+          critterSprite.alpha = 0.35;
 
           if (distanceToPlayer < spotlightRadius * 0.7) {
-            critterSprite.sprite.alpha = 1;
+            critterSprite.alpha = 1;
 
             if (distanceToPlayer < spotlightRadius * 0.5) {
               if (
@@ -528,20 +541,21 @@ export default function GridMapSquarePixi(): JSXElement {
               ) {
                 critterInstance.stopMoving();
                 critterInstance.setIsTriggered(true);
-                critterInstance.stopMoving();
-                await delay(500);
-                critterInstance.setIsTriggered(true);
-                critterInstance.isChangingDirection = true;
-                critterInstance.moveAwayFrom(
-                  {x: player.x, y: player.y},
-                  {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
-                );
               }
 
               if (
                 critterInstance.movementState.action === 'lookingAround'
               ) {
-                // Prevent critter from freaking out too often and trying to get random escape points all the time.
+                // Prevent critter from freaking out too often and
+                // trying to get random escape points all the time.
+                critterInstance.setIsTriggered(true);
+                critterInstance.isChangingDirection = true;
+
+                if (critterInstance.moveTimeout) {
+                  console.log(`Clearing critterInstance tout: ${critterInstance.moveTimeout.spawn}…`);
+                  clearTimeout(critterInstance.moveTimeout.tout);
+                }
+
                 critterInstance.moveAwayFrom(
                   {x: playerInstance.x, y: playerInstance.y},
                   {ms: critterSpeed.ms * 0.75, px: critterSpeed.px},
@@ -549,10 +563,9 @@ export default function GridMapSquarePixi(): JSXElement {
               }
 
               if (distanceToPlayer < spotlightRadius * 0.1) {
-                console.log((critterInstance.isTriggered));
-                if (!crittersEaten.includes(critterInstance.id)) {
+                if (!crittersEaten.has(critterInstance)) {
                   critterInstance.setIsAlive(false);
-                  crittersEaten.push(critterInstance.id);
+                  crittersEaten.add(critterInstance);
 
                   // Could also be "setNumberOfCrittersEaten(n => ++n);"
                   // or "setNumberOfCrittersEaten(crittersEaten.length);" but not
@@ -585,7 +598,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
                   setBuffsJsx(BuffsDisplay({buffs: playerBuffs}));
 
-                  critterSprite.sprite.destroy();
+                  critterSprite.destroy();
                 }
               }
             }
@@ -624,7 +637,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       container.addChild(critterSprite);
 
-      critterSprites.push({id: critter.id, sprite: critterSprite});
+      critterSprites.set(critter.id, critterSprite);
 
       critterSSMB
         .addSubscriber({subscriptionId: critter.id, callback: critterUpdater});
@@ -650,7 +663,11 @@ export default function GridMapSquarePixi(): JSXElement {
             speed.ms *= 0.5;
           }
 
-          await critter.moveTo(
+          if (critter.moveTimeout) {
+            console.log(`Clearing critter tout: ${critter.moveTimeout.spawn}…`);
+            clearTimeout(critter.moveTimeout.tout);
+          }
+          critter.moveTo(
             generatedGrid.getCellAt(randomLocation.x, randomLocation.y),
             speed,
             critter.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y),
@@ -671,7 +688,7 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      const ghostInstance = ghosts.find(g => g.instance.id === ghost.id);
+      const ghostInstance = ghosts.get(ghost.id);
 
       if (!ghostInstance) {
         return;
@@ -733,7 +750,7 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      for (const ghost of ghosts) {
+      for (const ghost of ghosts.values()) {
         const ghostSprite = ghost.sprite;
 
         const distanceToPlayer = calcDiagonalDistance(
@@ -780,18 +797,20 @@ export default function GridMapSquarePixi(): JSXElement {
       ghostSprite.animationSpeed = ghostBaseSpawningFps;
       ghostSprite.loop = false;
       ghostSprite.width = cellWidth;
+      // noinspection JSSuspiciousNameCombination
       ghostSprite.height = cellWidth;
 
       if (i % 2 === 1) {
         ghostSprite.tint = 'rgb(191, 223, 159)';
       }
 
-      ghosts.push({
-        instance: ghost,
-        sprite: ghostSprite,
-        msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
-        speed: ghostSpeed,
-      });
+      ghosts.set(ghost.id,
+        {
+          instance: ghost,
+          sprite: ghostSprite,
+          msWaitUntilSpawn: initialGhostMsWaitUntilSpawn.base + i * initialGhostMsWaitUntilSpawn.jitter,
+          speed: ghostSpeed,
+        });
 
       container.addChild(ghostSprite); // TODO: replace with animated ghost sprite.
 
@@ -886,7 +905,12 @@ export default function GridMapSquarePixi(): JSXElement {
       ghostSprite.textures = ghostTextures.running;
       ghostSprite.animationSpeed = ghostBaseRunningFps;
       ghostSprite.gotoAndPlay(0);
-      await ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
+
+      if (ghostInstance.moveTimeout) {
+        console.log(`Clearing ghostInstance tout: ${ghostInstance.moveTimeout.spawn}…`);
+        clearTimeout(ghostInstance.moveTimeout.tout);
+      }
+      ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
 
       // Play ghost de-spawn animation.
       await delay(300 + randomInt(50, 200));
@@ -1050,8 +1074,8 @@ export default function GridMapSquarePixi(): JSXElement {
       }
 
       gridScrollableContainer()?.scroll({
-        left: player.x * playerSpeed.px - gridScrollableContainer()!.clientWidth / 2,
-        top: player.y * playerSpeed.px - gridScrollableContainer()!.clientHeight / 2,
+        left: player.x * playerSpeed.px - (gridScrollableContainer()?.clientWidth || 0)/ 2,
+        top: player.y * playerSpeed.px - (gridScrollableContainer()?.clientHeight || 0) / 2,
       });
     };
 
@@ -1088,7 +1112,7 @@ export default function GridMapSquarePixi(): JSXElement {
       critterBehaviour(critter, player);
     }
 
-    for (const ghost of ghosts) {
+    for (const ghost of ghosts.values()) {
       ghostBehaviour(ghost, { instance: player, sprite: playerSprite });
     }
 
@@ -1104,8 +1128,8 @@ export default function GridMapSquarePixi(): JSXElement {
     // Always keep the character in the center of the scrollable div when it's moving
     // (but allow scrolling inside the div when the character is not moving)
     gridScrollableContainer()?.scroll({
-      left: (player?.x || 0) * cellWidth - gridScrollableContainer()!.clientWidth / 2,
-      top: (player?.y || 0) * cellWidth - gridScrollableContainer()!.clientHeight / 2,
+      left: (player?.x || 0) * cellWidth - (gridScrollableContainer()?.clientWidth || 0) / 2,
+      top: (player?.y || 0) * cellWidth - (gridScrollableContainer()?.clientHeight || 0) / 2,
     });
   };
 
@@ -1113,14 +1137,31 @@ export default function GridMapSquarePixi(): JSXElement {
     location.reload();
   };
 
-  const movePlayerTo = async (cell: GridCell) => {
+  // let playerMoveTimeout: { spawn: number, tout: NodeJS.Timeout } | null;
+
+  const movePlayerTo = (cell: GridCell) => {
     if (!player) {
       return;
     }
 
+    if (player.moveTimeout) {
+      console.log(`Clearing player tout: ${player.moveTimeout.spawn}…`);
+      clearTimeout(player.moveTimeout.tout);
+    }
+    player.moveTo(cell, playerSpeed, undefined);
+
+    // if (playerMoveTimeout) {
+    //   console.log('Clearing timeout for spawn ', playerMoveTimeout.spawn);
+    //   clearTimeout(playerMoveTimeout.tout);
+    //   playerMoveTimeout = undefined;
+    // }
+
     //Stop player from moving in the initial direction.
-    player!.isChangingDirection = true;
-    await player!.moveTo(cell, playerSpeed);
+    // await player.changeDirection();
+    // playerMoveTimeout = player.moveTo(cell, playerSpeed, undefined, playerMoveTimeout);
+    // player.moveTo(cell, playerSpeed, undefined);
+    // console.log('Setting: ', playerMoveTimeout);
+    // console.log('Setting timeout: ', playerMoveTimeout?.spawn);
   };
 
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
