@@ -82,30 +82,17 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
 
   const setIsTriggered = (state: boolean) => {
     _this.isTriggered = state;
-    // updateGameState();
   };
 
   const willMeet = (otherCharacter: Character): boolean | undefined => {
     if (otherCharacter.movementState.action === 'lookingAround') {
       const otherCharCell = pathfinder.getGridCellAt(otherCharacter.x, otherCharacter.y);
-      const result = _this.currentPath.includes(otherCharCell);
-
-      if (result) {
-        console.log('\nAVOIDED A SITTING CAT!\n' + Date.now());
-      }
-
-      return result;
+      return _this.currentPath.includes(otherCharCell);
     }
 
     if (_this.movementState.action === 'lookingAround') {
       const charCell = pathfinder.getGridCellAt(_this.x, _this.y); // TODO: extract a Character::getCell() method.
-      const result = otherCharacter.currentPath.includes(charCell);
-
-      if (result) {
-        console.log('\nROAAAR!\n' + Date.now());
-      }
-
-      return result;
+      return otherCharacter.currentPath.includes(charCell);
     }
 
     // Don't handle both characters moving.
@@ -211,10 +198,6 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     spawn?: number,
     tout?: NodeJS.Timeout,
   ): { spawn: number, tout: NodeJS.Timeout } | null => {
-    // await delay(_this.movementState.speed.ms);
-
-    // console.log(`Running spawn ${spawn}…`);
-
     if (!spawn) {
       spawn = randomInt(0, 100);
     }
@@ -256,13 +239,12 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
 
     moveToCoords(nextStep.x, nextStep.y);
 
-
     tout = setTimeout(
       () => takePath(path, false, spawn),
       _this.movementState.speed.ms,
     );
 
-    _this.moveTimeout = { spawn, tout };
+    (_this.moveTimeout as unknown) = { spawn, tout };
 
     return { spawn, tout };
   };

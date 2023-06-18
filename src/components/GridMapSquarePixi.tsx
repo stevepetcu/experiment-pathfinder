@@ -12,7 +12,7 @@ import {
   Sprite,
   Texture,
 } from 'pixi.js';
-import {createEffect, createSignal, JSXElement, onCleanup, onMount, Setter, Show} from 'solid-js';
+import { createSignal, JSXElement, onCleanup, onMount, Setter, Show} from 'solid-js';
 
 import {
   CritterTextureMap,
@@ -56,12 +56,10 @@ export default function GridMapSquarePixi(): JSXElement {
   const minRoomWidth = 3;
   const maxRoomWidth = 8;
   const numberOfCritters = 5;
-  // const numberOfCritters = 0;
 
-  // const numberOfGhosts = 2;
-  const numberOfGhosts = 0;
-  const initialGhostMsWaitUntilSpawn = {base: 15000, jitter: 5000};
-  const subsequentGhostMsWaitUntilSpawn = {base: 6000, jitter: 1000};
+  const numberOfGhosts = 2;
+  const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
+  const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;
   let spotlightRadius = cellWidth * 6;
@@ -70,32 +68,16 @@ export default function GridMapSquarePixi(): JSXElement {
   const critterBaseRunningFps = 4 / 20;
   const critterBaseLookingAroundFps = 6 / 50;
   const ghostBaseRunningFps = 6 / 20;
-  const ghostBaseSpawnDuration = 3000;
-  const ghostBaseSpawningFps = 13 / 130;
+  const ghostBaseSpawnDuration = 2000;
+  const ghostBaseSpawningFps = 13 / 75;
   // End "These settings are not user-configurable"
-
-  document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || event.key !== 'Enter') {
-      return; // Do nothing if the event was already processed.
-    }
-
-    if (finishedLoading() &&  !isGameOver()) {
-      startGame();
-    } else if (isGameOver()) {
-      if (document.activeElement?.id !== 'current-player-hs-name-input') {
-        restartGame();
-      }
-    }
-
-    event.preventDefault();
-  }, true);
 
   // TODO: might want to refactor and not use playerSpeed.px and cellWidth both.
   //  Just pick one of them, since they must always be equal.
   const basePlayerSpeed: Speed = {ms: 300, px: cellWidth};
   const playerSpeed = {...basePlayerSpeed};
-  const critterSpeed: Speed = {ms: 250, px: cellWidth};
-  const ghostSpeed = {ms: 120, px: cellWidth};
+  const critterSpeed: Speed = {ms: 220, px: cellWidth};
+  const ghostSpeed = {ms: 115, px: cellWidth};
 
   // TODO do I need signals here?
   const [numberOfRooms, setNumberOfRooms] = createSignal(0);
@@ -200,7 +182,25 @@ export default function GridMapSquarePixi(): JSXElement {
   const [isGameWon, setIsGameWon] = createSignal(false);
   const [isGameOver, setIsGameOver] = createSignal(false);
 
+  const handleEnter = (event: KeyboardEvent) => {
+    if (event.key !== 'Enter' || !finishedLoading()) {
+      return; // Do nothing if the event was already processed.
+    }
+
+    if (!isGameOver()) {
+      startGame();
+    } else {
+      if (document.activeElement?.id !== 'current-player-hs-name-input') {
+        restartGame();
+      }
+    }
+
+    event.preventDefault();
+  };
+
   onMount(async () => {
+    document.addEventListener('keydown', handleEnter, true);
+
     typeLine(
       lineOneContent,
       setLineOne,
@@ -423,11 +423,12 @@ export default function GridMapSquarePixi(): JSXElement {
       // TODO: extract this whole method
       // Critter-player interactions
       const distanceToPlayer = calcDiagonalDistance(
-        {x: critterSprite.x, y: critterSprite.y},
+        // Calculate x based on the instance rather than sprite, b/c we're translating the sprite.
+        {x: critterInstance.x * critterSpeed.px, y: critterInstance.y * critterSpeed.px},
         {x: playerSprite.x, y: playerSprite.y},
       );
 
-      if (distanceToPlayer >= spotlightRadius) {
+      if (distanceToPlayer > spotlightRadius) {
         critterSprite.alpha = 0;
         critterInstance.setIsTriggered(false);
       } else {
@@ -449,7 +450,6 @@ export default function GridMapSquarePixi(): JSXElement {
               await delay(50);
 
               if (critterInstance.moveTimeout) {
-                console.log(`Clearing critterInstance tout: ${critterInstance.moveTimeout.spawn}…`);
                 clearTimeout(critterInstance.moveTimeout.tout);
               }
 
@@ -521,11 +521,12 @@ export default function GridMapSquarePixi(): JSXElement {
         // TODO: extract this whole method
         // Make  critter sprite visible
         const distanceToPlayer = calcDiagonalDistance(
-          {x: critterSprite.x, y: critterSprite.y},
+          // Calculate x based on the instance rather than sprite, b/c we're translating the sprite.
+          {x: critterInstance.x * critterSpeed.px, y: critterInstance.y * critterSpeed.px},
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
 
-        if (distanceToPlayer >= spotlightRadius) {
+        if (distanceToPlayer > spotlightRadius) {
           critterSprite.alpha = 0;
           critterInstance.setIsTriggered(false);
         } else {
@@ -552,7 +553,6 @@ export default function GridMapSquarePixi(): JSXElement {
                 critterInstance.isChangingDirection = true;
 
                 if (critterInstance.moveTimeout) {
-                  console.log(`Clearing critterInstance tout: ${critterInstance.moveTimeout.spawn}…`);
                   clearTimeout(critterInstance.moveTimeout.tout);
                 }
 
@@ -664,7 +664,6 @@ export default function GridMapSquarePixi(): JSXElement {
           }
 
           if (critter.moveTimeout) {
-            console.log(`Clearing critter tout: ${critter.moveTimeout.spawn}…`);
             clearTimeout(critter.moveTimeout.tout);
           }
           critter.moveTo(
@@ -683,7 +682,7 @@ export default function GridMapSquarePixi(): JSXElement {
     // End "Critter stuff"
 
     // Ghosts stuff
-    const ghostUiUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
+    const ghostUpdater = (ghost: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (isGameOver()) {
         return;
       }
@@ -719,29 +718,38 @@ export default function GridMapSquarePixi(): JSXElement {
       }
 
       const distanceToPlayer = calcDiagonalDistance(
-        {x: ghostSprite.x, y: ghostSprite.y},
+        // Calculate x based on the ghost instance rather than sprite, b/c we're translating the sprite.
+        {x: ghostInstance.instance.x * ghostSpeed.px, y: ghostInstance.instance.y * ghostSpeed.px},
         {x: playerSprite.x, y: playerSprite.y},
       );
+
+      console.log('Ghost and player sprite positions in the updater: ');
+      console.log(ghostSprite.x / ghostSpeed.px, ghostSprite.y / ghostSpeed.px);
+      console.log(playerSprite.x / playerSpeed.px, playerSprite.y / playerSpeed.px);
 
       if (distanceToPlayer >= spotlightRadius) {
         ghostSprite.alpha = 0;
       }
       if (distanceToPlayer < spotlightRadius) {
         ghostSprite.alpha = 0.35;
-      }
-      if (distanceToPlayer < spotlightRadius * 0.7) {
-        ghostSprite.alpha = 1;
-      }
-      if (distanceToPlayer < spotlightRadius * 0.1 && ghostInstance.instance.isAlive) {
-        console.log('Player caught.');
-        player.setIsAlive(false);
-        setIsGameLost(true);
-        typeLine(
-          lineGameLostContent,
-          setLineGameLost,
-          setFinishedTypingLineGameLost,
-        );
-        setIsGameOver(isGameLost());
+        if (distanceToPlayer < spotlightRadius * 0.7) {
+          ghostSprite.alpha = 1;
+          if (distanceToPlayer < spotlightRadius * 0.1) {
+            console.log('\nMOTHADFUF\n' + ghostInstance.instance.id);
+            if (ghostInstance.instance.isAlive) {
+              console.log('\nBOROOROOROROOR\n');
+              console.debug('Player caught.');
+              player.setIsAlive(false);
+              setIsGameLost(true);
+              typeLine(
+                lineGameLostContent,
+                setLineGameLost,
+                setFinishedTypingLineGameLost,
+              );
+              setIsGameOver(isGameLost());
+            }
+          }
+        }
       }
     };
 
@@ -754,7 +762,8 @@ export default function GridMapSquarePixi(): JSXElement {
         const ghostSprite = ghost.sprite;
 
         const distanceToPlayer = calcDiagonalDistance(
-          {x: ghostSprite.x, y: ghostSprite.y},
+          // Calculate x based on the ghost instance rather than sprite, b/c we're translating the sprite.
+          {x: ghost.instance.x * ghostSpeed.px, y: ghost.instance.y * ghostSpeed.px},
           {x: playerInstance.x * cellWidth, y: playerInstance.y * cellWidth},
         );
 
@@ -763,20 +772,21 @@ export default function GridMapSquarePixi(): JSXElement {
         }
         if (distanceToPlayer < spotlightRadius) {
           ghostSprite.alpha = 0.35;
-        }
-        if (distanceToPlayer < spotlightRadius * 0.7) {
-          ghostSprite.alpha = 1;
-        }
-        if (distanceToPlayer < spotlightRadius * 0.1 && ghost.instance.isAlive) {
-          console.log('Player caught.');
-          player.setIsAlive(false);
-          setIsGameLost(true);
-          typeLine(
-            lineGameLostContent,
-            setLineGameLost,
-            setFinishedTypingLineGameLost,
-          );
-          setIsGameOver(isGameLost());
+          if (distanceToPlayer < spotlightRadius * 0.7) {
+            ghostSprite.alpha = 1;
+            if (distanceToPlayer < spotlightRadius * 0.1 && ghost.instance.isAlive) {
+              console.debug('Player caught.');
+              console.log('Player caught.');
+              player.setIsAlive(false);
+              setIsGameLost(true);
+              typeLine(
+                lineGameLostContent,
+                setLineGameLost,
+                setFinishedTypingLineGameLost,
+              );
+              setIsGameOver(isGameLost());
+            }
+          }
         }
       }
     };
@@ -814,7 +824,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
       container.addChild(ghostSprite); // TODO: replace with animated ghost sprite.
 
-      ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUiUpdater});
+      ghostSSMB.addSubscriber({subscriptionId: ghost.id, callback: ghostUpdater});
     }
 
     ghostBehaviour = async (
@@ -825,119 +835,135 @@ export default function GridMapSquarePixi(): JSXElement {
         return;
       }
 
-      const ghostInstance = ghost.instance;
-      const ghostSpawnWait = ghost.msWaitUntilSpawn;
-      const ghostSprite = ghost.sprite;
+      try {
+        const ghostInstance = ghost.instance;
+        const ghostSpawnWait = ghost.msWaitUntilSpawn;
+        const ghostSprite = ghost.sprite;
 
-      ghostInstance.setIsAlive(false); // we'll use this as: ghost is deadly if it's alive, otherwise it won't harm the player.
+        const playerInstance = player.instance;
+        const playerSprite = player.sprite;
 
-      const playerInstance = player.instance;
-      const playerSprite = player.sprite;
+        ghostInstance.setIsAlive(false);
 
-      await delay(ghostSpawnWait);
+        await delay(ghostSpawnWait);
 
-      let randomGhostSpawningCoords;
-      const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
-      const playerRoom = generatedRooms.find(room => room.roomDto.id === playerCell.roomId);
+        let randomGhostSpawningCoords;
+        const playerCell = ghostInstance.pathfinder.getGridCellAt(playerInstance.x, playerInstance.y);
+        const playerRoom = generatedRooms.find(room => room.roomDto.id === playerCell.roomId);
 
-      if (playerRoom) {
-        randomGhostSpawningCoords = generateRandomCoordsInSpecificRoom(
-          playerRoom,
-          {x: playerInstance.x, y: playerInstance.y},
+        if (playerRoom) {
+          randomGhostSpawningCoords = generateRandomCoordsInSpecificRoom(
+            playerRoom,
+            {x: playerInstance.x, y: playerInstance.y},
+          );
+        } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
+          randomGhostSpawningCoords = ghostInstance.pathfinder.generateObstacleAwareRandomCoordsInAreaAround(
+            {x: playerInstance.x, y: playerInstance.y}, 5, true,
+          );
+        }
+
+        if (!randomGhostSpawningCoords) { // continue
+          ghostBehaviour(ghost, player);
+          return;
+        }
+
+        ghostInstance.x = randomGhostSpawningCoords.x;
+        ghostInstance.y = randomGhostSpawningCoords.y;
+
+        ghostSprite.scale.x = Math.abs(ghostSprite.scale.x);
+        ghostSprite.x = ghostInstance.x * ghostSpeed.px;
+        ghostSprite.y = ghostInstance.y * ghostSpeed.px;
+
+        // TODO:
+        //  1. extract this whole distance/alpha thing as its own thing.
+        //  2. refactor the other places that could use the sprite directly, rather than having to recalculate its position.
+        const distanceToPlayer = calcDiagonalDistance(
+          {x: ghostSprite.x, y: ghostSprite.y},
+          {x: playerSprite.x, y: playerSprite.y},
         );
-      } else { // TODO: should just add a 'type' to the Room/Corridor, to make this easy.
-        randomGhostSpawningCoords = ghostInstance.pathfinder.generateObstacleAwareRandomCoordsInAreaAround(
-          {x: playerInstance.x, y: playerInstance.y}, 5, true,
-        );
-      }
 
-      if (!randomGhostSpawningCoords) { // continue
-        ghostBehaviour(ghost, player);
-        return;
-      }
+        if (distanceToPlayer >= spotlightRadius) {
+          ghostSprite.alpha = 0;
+        }
+        if (distanceToPlayer < spotlightRadius) {
+          ghostSprite.alpha = 0.35;
+          if (distanceToPlayer < spotlightRadius * 0.7) {
+            ghostSprite.alpha = 1;
+          }
+        }
 
-      ghostInstance.x = randomGhostSpawningCoords.x;
-      ghostInstance.y = randomGhostSpawningCoords.y;
-
-      ghostSprite.scale.x = Math.abs(ghostSprite.scale.x);
-      ghostSprite.x = ghostInstance.x * ghostSpeed.px;
-      ghostSprite.y = ghostInstance.y * ghostSpeed.px;
-
-      // TODO:
-      //  1. extract this whole distance/alpha thing as its own thing.
-      //  2. refactor the other places that could use the sprite directly, rather than having to recalculate its position.
-      const distanceToPlayer = calcDiagonalDistance(
-        {x: ghostSprite.x, y: ghostSprite.y},
-        {x: playerSprite.x, y: playerSprite.y},
-      );
-
-      if (distanceToPlayer >= spotlightRadius) {
-        ghostSprite.alpha = 0;
-      }
-      if (distanceToPlayer < spotlightRadius) {
-        ghostSprite.alpha = 0.35;
-      }
-      if (distanceToPlayer < spotlightRadius * 0.7) {
-        ghostSprite.alpha = 1;
-      }
-
-      // Play ghost spawn animation.
-      ghostSprite.textures = ghostTextures.spawn;
-      ghostSprite.gotoAndPlay(0);
-      ghostSprite.onComplete = () => {
-        // When animation completes, ghost is able to kill the player.
+        // Play ghost spawn animation.
+        ghostSprite.textures = ghostTextures.spawn;
+        ghostSprite.gotoAndPlay(0);
+        await delay(ghostBaseSpawnDuration + randomInt(100, 500));
+        console.log('I LIVE!!! ' + ghostInstance.id);
         ghostInstance.setIsAlive(true);
-      };
-      await delay(ghostBaseSpawnDuration + randomInt(0, 1000));
+        await delay(randomInt(200, 500));
 
-      // Try to anticipate the player's movement
-      const ghostTargetCoords: Coords = {
-        x: playerInstance.x + (playerInstance.movementState.action === 'running' ?
-          playerInstance.movementState.vectorX * randomInt(1, 3) :
-          0),
-        y: playerInstance.y + (playerInstance.movementState.action === 'running' ?
-          playerInstance.movementState.vectorY * randomInt(1, 3) :
-          0),
-      };
+        // Try to anticipate the player's movement
+        const ghostTargetCoords: Coords = {
+          x: playerInstance.x + (playerInstance.movementState.action === 'running' ?
+            playerInstance.movementState.vectorX * randomInt(1, 3) :
+            0),
+          y: playerInstance.y + (playerInstance.movementState.action === 'running' ?
+            playerInstance.movementState.vectorY * randomInt(1, 3) :
+            0),
+        };
 
-      const ghostTargetCell = ghostInstance.pathfinder.getGridCellAt(ghostTargetCoords.x, ghostTargetCoords.y);
+        const ghostTargetCell = ghostInstance.pathfinder.getGridCellAt(ghostTargetCoords.x, ghostTargetCoords.y);
 
-      ghostSprite.textures = ghostTextures.running;
-      ghostSprite.animationSpeed = ghostBaseRunningFps;
-      ghostSprite.gotoAndPlay(0);
+        ghostSprite.textures = ghostTextures.running;
+        ghostSprite.animationSpeed = ghostBaseRunningFps;
+        ghostSprite.gotoAndPlay(0);
 
-      if (ghostInstance.moveTimeout) {
-        console.log(`Clearing ghostInstance tout: ${ghostInstance.moveTimeout.spawn}…`);
-        clearTimeout(ghostInstance.moveTimeout.tout);
+        if (ghostInstance.moveTimeout) {
+          clearTimeout(ghostInstance.moveTimeout.tout);
+        }
+
+        console.log('I RUN ' + ghostInstance.id);
+        // Ghost is able to kill the player.
+        ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
+
+        // Wait for the ghost to reach its destination and stop, then play the ghost de-spawn animation.
+        while(ghostInstance.movementState.action !== 'lookingAround') {
+          console.log(ghostInstance.movementState.action);
+          console.log('I ruun');
+          await delay(300 + randomInt(50, 200));
+        }
+
+        ghostSprite.textures = ghostTextures.despawn;
+        await delay(500);
+        ghostSprite.gotoAndPlay(0);
+        ghostInstance.setIsAlive(false);
+        console.log('I DED!!! ' + ghostInstance.id);
+        console.log(ghostInstance.x, ghostInstance.y);
+        console.log(ghostInstance.x * ghostSpeed.px, ghostInstance.y * ghostSpeed.px);
+        console.log(playerInstance.x * playerSpeed.px, playerInstance.y * playerSpeed.px);
+
+        const newGhostSpawnWait = randomInt(
+          subsequentGhostMsWaitUntilSpawn.base,
+          subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
+        );
+
+        subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base * 0.8, 1500);
+        subsequentGhostMsWaitUntilSpawn.jitter - Math.floor(subsequentGhostMsWaitUntilSpawn.jitter * 0.65);
+
+        // TODO: make the ghost slightly faster - probably add a speed param to this function and remove the "base" ghost speed.
+        ghost.speed.ms = Math.floor(ghost.speed.ms * 0.9);
+
+        await ghostBehaviour(
+          {
+            instance: ghostInstance,
+            msWaitUntilSpawn: newGhostSpawnWait,
+            sprite: ghostSprite,
+            speed: ghost.speed,
+          },
+          player,
+        );
+      } catch(err) {
+        console.error('An error occurred: ');
+        console.error(err);
       }
-      ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
-
-      // Play ghost de-spawn animation.
-      await delay(300 + randomInt(50, 200));
-      ghostSprite.textures = ghostTextures.despawn;
-      ghostSprite.gotoAndPlay(0);
-      ghostInstance.setIsAlive(false); // Ghost will not kill the player anymore.
-
-      const newGhostSpawnWait = randomInt(
-        subsequentGhostMsWaitUntilSpawn.base,
-        subsequentGhostMsWaitUntilSpawn.base + subsequentGhostMsWaitUntilSpawn.jitter,
-      );
-
-      subsequentGhostMsWaitUntilSpawn.base = Math.max(subsequentGhostMsWaitUntilSpawn.base - 300, 1500);
-      subsequentGhostMsWaitUntilSpawn.jitter - Math.floor(subsequentGhostMsWaitUntilSpawn.jitter * 0.9);
-
-      // TODO: make the ghost slightly faster - probably add a speed param to this function and remove the "base" ghost speed.
-      ghost.speed.ms = Math.floor(ghost.speed.ms * 0.9);
-
-      await ghostBehaviour(
-        {
-          instance: ghostInstance,
-          msWaitUntilSpawn: newGhostSpawnWait,
-          sprite: ghostSprite,
-          speed: ghost.speed,
-        },
-        player,
-      );
     };
     // End "Ghosts stuff"
 
@@ -1012,7 +1038,7 @@ export default function GridMapSquarePixi(): JSXElement {
 
     setGridScrollableContainer(document.getElementById('grid-scrollable-container'));
 
-    const playerUIUpdater = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
+    const playerUpdater = (playerInstance: Character, _ssmb: SimpleSequenceMessageBroker) => {
       if (!playerSprite || !playerInstance.isAlive || isGameOver()) {
         return;
       }
@@ -1080,26 +1106,24 @@ export default function GridMapSquarePixi(): JSXElement {
     };
 
     playerSSMB
-      .addSubscriber({subscriptionId: player.id, callback: playerUIUpdater})
+      .addSubscriber({subscriptionId: player.id, callback: playerUpdater})
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForCritters})
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
     setFinishedLoading(true);
-    // TODO: the below used for dev, remove
-    // setIsGameStarted(true);
-    // setIsGameOver(true);
-    // setIsGameWon(true);
   });
 
   const destroyPixiApp = () => {
     console.debug('Destroying app…');
     setIsGameOver(true);
-    pixiApp().stage.destroy({children: true, texture: true, baseTexture: true}); // Should not be needed but…
     pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
   };
 
   onCleanup(() => {
-    setIsGameOver(true);
+    setIsGameStarted(false);
+    setIsGameOver(false);
+    setIsGameLost(false);
+    document.removeEventListener('keydown', handleEnter, true);
     destroyPixiApp();
   });
 
@@ -1137,43 +1161,20 @@ export default function GridMapSquarePixi(): JSXElement {
     location.reload();
   };
 
-  // let playerMoveTimeout: { spawn: number, tout: NodeJS.Timeout } | null;
-
   const movePlayerTo = (cell: GridCell) => {
     if (!player) {
       return;
     }
 
     if (player.moveTimeout) {
-      console.log(`Clearing player tout: ${player.moveTimeout.spawn}…`);
       clearTimeout(player.moveTimeout.tout);
     }
     player.moveTo(cell, playerSpeed, undefined);
-
-    // if (playerMoveTimeout) {
-    //   console.log('Clearing timeout for spawn ', playerMoveTimeout.spawn);
-    //   clearTimeout(playerMoveTimeout.tout);
-    //   playerMoveTimeout = undefined;
-    // }
-
-    //Stop player from moving in the initial direction.
-    // await player.changeDirection();
-    // playerMoveTimeout = player.moveTo(cell, playerSpeed, undefined, playerMoveTimeout);
-    // player.moveTo(cell, playerSpeed, undefined);
-    // console.log('Setting: ', playerMoveTimeout);
-    // console.log('Setting timeout: ', playerMoveTimeout?.spawn);
   };
 
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
-
-  createEffect(() => {
-    if (isGameOver()) {
-      console.debug('Game over.');
-      destroyPixiApp();
-    }
-  });
 
   return (
     <div class={'text-center'}>
