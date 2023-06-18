@@ -14,11 +14,9 @@
   "dependencies": {
     "@planetscale/database": "^1.7.0",
     "drizzle-orm": "^0.27.0",
-    "lambda-rate-limiter": "^3.0.1",
     "zod": "^3.21.4"
   },
   "devDependencies": {
-    "@types/lambda-rate-limiter": "^3.0.0",
     "@types/node": "^20.3.1",
     "drizzle-kit": "^0.19.1",
     "mysql2": "^3.3.5",

@@ -7,17 +7,11 @@ dependencies:
   drizzle-orm:
     specifier: ^0.27.0
     version: 0.27.0(@planetscale/database@1.7.0)(mysql2@3.3.5)
-  lambda-rate-limiter:
-    specifier: ^3.0.1
-    version: 3.0.1
   zod:
     specifier: ^3.21.4
     version: 3.21.4
 
 devDependencies:
-  '@types/lambda-rate-limiter':
-    specifier: ^3.0.0
-    version: 3.0.0
   '@types/node':
     specifier: ^20.3.1
     version: 20.3.1
@@ -249,10 +243,6 @@ packages:
     resolution: {integrity: sha512-lWR6biXChUyQnxsT4RT1CIeR3ZJvwTQXiQ+158MnY3VjLwjHEGakDzdH9kwUGPk6CHvu6UeqRXp1DgUOVHJFTw==}
     engines: {node: '>=16'}
     dev: false
-
-  /@types/lambda-rate-limiter@3.0.0:
-    resolution: {integrity: sha512-bKej2hv/zn16vb0r86Y/CGZ49nfgFP8DqWQCv28yHWljoe0xNL2aMG+4WXeUFyQe48hmJu/21xhvrlDm2OlFjw==}
-    dev: true
 
   /@types/node@20.3.1:
     resolution: {integrity: sha512-EhcH/wvidPy1WeML3TtYFGR83UzjxeWRen9V402T8aUGYsCHOmfoisV3ZSg03gAFIbLq8TnWOJ0f4cALtnSEUg==}
@@ -550,26 +540,12 @@ packages:
       dreamopt: 0.8.0
     dev: true
 
-  /lambda-rate-limiter@3.0.1:
-    resolution: {integrity: sha512-1xm5KyqCV3WB1y/iBlvRn3cH53A88D+NP+zvY6HyAWj3W70IaiC+gGFu19TWBV9xjAEaRgWekP/gQP7RGn6LTg==}
-    engines: {node: '>= 12'}
-    dependencies:
-      lru-cache: 6.0.0
-    dev: false
-
   /lodash.throttle@4.1.1:
     resolution: {integrity: sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==}
     dev: true
 
   /long@5.2.3:
     resolution: {integrity: sha512-lcHwpNoggQTObv5apGNCTdJrO69eHOZMi4BNC+rTLER8iHAqGrUVeLh/irVIM7zTw2bOXA8T6uNPeujwOLg/2Q==}
-
-  /lru-cache@6.0.0:
-    resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
-    engines: {node: '>=10'}
-    dependencies:
-      yallist: 4.0.0
-    dev: false
 
   /lru-cache@7.18.3:
     resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==}
@@ -699,10 +675,6 @@ packages:
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
-
-  /yallist@4.0.0:
-    resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
-    dev: false
 
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}

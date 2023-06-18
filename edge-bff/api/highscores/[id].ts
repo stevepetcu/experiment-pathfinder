@@ -5,7 +5,6 @@ import {z} from 'zod';
 
 import {highscores} from '../../database/highscores';
 import {allowCors} from '../../utils/cors';
-import {rateLimit} from '../../utils/rate-limit';
 import {defaultResponseOptions, ResponseOptions} from '../../utils/response-options';
 import {searchParams} from '../../utils/search-params';
 
@@ -188,4 +187,4 @@ const handler = async (request: Request, event: never, responseOpts: ResponseOpt
   }
 };
 
-export default rateLimit(allowCors(handler));
+export default allowCors(handler);
