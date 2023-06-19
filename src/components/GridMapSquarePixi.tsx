@@ -639,6 +639,21 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
       critterSprite.height = cellWidth/2;
       critterSprite.x = (critter.x || -1) * critterSpeed.px + cellWidth/4;
       critterSprite.y = (critter.y || -1) * critterSpeed.px + cellWidth/4;
+
+      const distanceToPlayer = calcDiagonalDistance(
+        {x: critterSprite.x, y: critterSprite.y},
+        {x: playerSprite.x, y: playerSprite.y},
+      );
+
+      if (distanceToPlayer >= spotlightRadius) {
+        critterSprite.alpha = 0;
+      }
+      if (distanceToPlayer < spotlightRadius) {
+        critterSprite.alpha = 0.35;
+        if (distanceToPlayer < spotlightRadius * 0.7) {
+          critterSprite.alpha = 1;
+        }
+      }
       critterSprite.alpha = 0;
 
       container.addChild(critterSprite);
@@ -1063,14 +1078,14 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           {x: canOfMilkSprite.x, y: canOfMilkSprite.y},
           {x: playerInstance.x * playerSpeed.px, y: playerInstance.y * playerSpeed.px},
         );
-        if (distanceToPlayer >= spotlightRadius) {
+        if (distanceToPlayer > spotlightRadius) {
           canOfMilkSprite.alpha = 0;
         }
         if (distanceToPlayer < spotlightRadius) {
           canOfMilkSprite.alpha = 0.35;
-        }
-        if (distanceToPlayer < spotlightRadius * 0.7) {
-          canOfMilkSprite.alpha = 1;
+          if (distanceToPlayer < spotlightRadius * 0.7) {
+            canOfMilkSprite.alpha = 1;
+          }
         }
         // TODO: consider using sprite's bounds intersection/hit boxes?
         if (distanceToPlayer < spotlightRadius * 0.1) {
