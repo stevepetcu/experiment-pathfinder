@@ -12,7 +12,7 @@ import {
   Sprite,
   Texture,
 } from 'pixi.js';
-import { createSignal, JSXElement, onCleanup, onMount, Setter, Show} from 'solid-js';
+import {createEffect, createSignal, JSXElement, onCleanup, onMount, Setter, Show} from 'solid-js';
 
 import {
   CritterTextureMap,
@@ -42,7 +42,10 @@ import EnterButton from './EnterButton';
 import GameWon from './GameWon';
 import styles from './GridMapSquarePixi.module.css';
 
-export default function GridMapSquarePixi(): JSXElement {
+interface GridMapSquarePixiProps {
+  restartGameCallback: () => void,
+}
+export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXElement {
   // Override vh property, so it works properly on mobile devices with browser navigation menus
   setVh();
   window.addEventListener('resize', () => {
@@ -58,7 +61,8 @@ export default function GridMapSquarePixi(): JSXElement {
   const numberOfCritters = 5;
 
   const numberOfGhosts = 2;
-  const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
+  // const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
+  const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 1000};
   const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;
@@ -199,6 +203,8 @@ export default function GridMapSquarePixi(): JSXElement {
   };
 
   onMount(async () => {
+    console.debug('Mounting component…');
+
     document.addEventListener('keydown', handleEnter, true);
 
     typeLine(
@@ -723,10 +729,6 @@ export default function GridMapSquarePixi(): JSXElement {
         {x: playerSprite.x, y: playerSprite.y},
       );
 
-      console.log('Ghost and player sprite positions in the updater: ');
-      console.log(ghostSprite.x / ghostSpeed.px, ghostSprite.y / ghostSpeed.px);
-      console.log(playerSprite.x / playerSpeed.px, playerSprite.y / playerSpeed.px);
-
       if (distanceToPlayer >= spotlightRadius) {
         ghostSprite.alpha = 0;
       }
@@ -735,9 +737,7 @@ export default function GridMapSquarePixi(): JSXElement {
         if (distanceToPlayer < spotlightRadius * 0.7) {
           ghostSprite.alpha = 1;
           if (distanceToPlayer < spotlightRadius * 0.1) {
-            console.log('\nMOTHADFUF\n' + ghostInstance.instance.id);
             if (ghostInstance.instance.isAlive) {
-              console.log('\nBOROOROOROROOR\n');
               console.debug('Player caught.');
               player.setIsAlive(false);
               setIsGameLost(true);
@@ -776,7 +776,6 @@ export default function GridMapSquarePixi(): JSXElement {
             ghostSprite.alpha = 1;
             if (distanceToPlayer < spotlightRadius * 0.1 && ghost.instance.isAlive) {
               console.debug('Player caught.');
-              console.log('Player caught.');
               player.setIsAlive(false);
               setIsGameLost(true);
               typeLine(
@@ -896,7 +895,6 @@ export default function GridMapSquarePixi(): JSXElement {
         ghostSprite.textures = ghostTextures.spawn;
         ghostSprite.gotoAndPlay(0);
         await delay(ghostBaseSpawnDuration + randomInt(100, 500));
-        console.log('I LIVE!!! ' + ghostInstance.id);
         ghostInstance.setIsAlive(true);
         await delay(randomInt(200, 500));
 
@@ -920,14 +918,11 @@ export default function GridMapSquarePixi(): JSXElement {
           clearTimeout(ghostInstance.moveTimeout.tout);
         }
 
-        console.log('I RUN ' + ghostInstance.id);
         // Ghost is able to kill the player.
         ghostInstance.moveTo(ghostTargetCell, ghostSpeed);
 
         // Wait for the ghost to reach its destination and stop, then play the ghost de-spawn animation.
         while(ghostInstance.movementState.action !== 'lookingAround') {
-          console.log(ghostInstance.movementState.action);
-          console.log('I ruun');
           await delay(300 + randomInt(50, 200));
         }
 
@@ -935,10 +930,6 @@ export default function GridMapSquarePixi(): JSXElement {
         await delay(500);
         ghostSprite.gotoAndPlay(0);
         ghostInstance.setIsAlive(false);
-        console.log('I DED!!! ' + ghostInstance.id);
-        console.log(ghostInstance.x, ghostInstance.y);
-        console.log(ghostInstance.x * ghostSpeed.px, ghostInstance.y * ghostSpeed.px);
-        console.log(playerInstance.x * playerSpeed.px, playerInstance.y * playerSpeed.px);
 
         const newGhostSpawnWait = randomInt(
           subsequentGhostMsWaitUntilSpawn.base,
@@ -1115,16 +1106,39 @@ export default function GridMapSquarePixi(): JSXElement {
 
   const destroyPixiApp = () => {
     console.debug('Destroying app…');
-    setIsGameOver(true);
-    pixiApp().destroy(true, {children: true, texture: true, baseTexture: true});
+    pixiApp().destroy(true, {children: true});
+  };
+
+  const restartGame = () => {
+    // location.reload();
+    console.log('Restarting the game…');
+
+    critterBehaviour = null;
+    ghostBehaviour = null;
+    player = null;
+    ghosts.forEach((val) => {
+      clearTimeout(val.instance.moveTimeout?.tout);
+      val = null;
+    });
+    critters.forEach((val) => {
+      clearTimeout(val.moveTimeout?.tout);
+      val = null;
+    });
+
+    destroyPixiApp();
+
+    props.restartGameCallback();
   };
 
   onCleanup(() => {
+    console.debug('Cleaning up…');
+
     setIsGameStarted(false);
     setIsGameOver(false);
     setIsGameLost(false);
     document.removeEventListener('keydown', handleEnter, true);
-    destroyPixiApp();
+
+    // destroyPixiApp();
   });
 
   const startGame = () => {
@@ -1157,10 +1171,6 @@ export default function GridMapSquarePixi(): JSXElement {
     });
   };
 
-  const restartGame = () => {
-    location.reload();
-  };
-
   const movePlayerTo = (cell: GridCell) => {
     if (!player) {
       return;
@@ -1175,6 +1185,18 @@ export default function GridMapSquarePixi(): JSXElement {
   const roomsJsx = <h2>Finished generating a {mapWidth}x{mapWidth} map,
     placing {numberOfRooms()} rooms in {timeToPlaceRooms()}ms.</h2>;
   const corridorsJsx = <h2>Finished placing {numberOfCorridors()} corridors in {timeToPlaceCorridors()}ms.</h2>;
+
+  createEffect(() => {
+    if (isGameOver()) {
+      console.log('Stopping characters…');
+      ghosts.forEach((val) => {
+        clearTimeout(val.instance.moveTimeout?.tout);
+      });
+      critters.forEach((val) => {
+        clearTimeout(val.moveTimeout?.tout);
+      });
+    }
+  });
 
   return (
     <div class={'text-center'}>
@@ -1198,8 +1220,7 @@ export default function GridMapSquarePixi(): JSXElement {
           {
             isGameWon() &&
             <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
-              <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
-              {/*<GameWon playerTimeToComplete={randomInt(30, 300)} restartGameCallback={restartGame}/>*/}
+              <GameWon playerTimeToComplete={randomInt(30, 300)} restartGameCallback={restartGame}/>
             </div>
           }
           {
@@ -1230,27 +1251,32 @@ export default function GridMapSquarePixi(): JSXElement {
           }
           {
             (!finishedLoading() || !isGameStarted()) &&
-            <div class={'bg-slate-800 h-full w-full ' +
+            <div class={'bg-slate-800 h-full w-full gap-y-5 ' +
                    'grid grid-cols-1 content-center z-30 '}>
-              <div class={'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
-                <h1>
-                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                    {lineOne()}
-                  </span>
-                  {
-                    !finishedTypingLineOne() && <span>_</span>
-                  }
-                </h1>
-                <h1>
-                  <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                    {lineTwo()}
-                  </span>
-                  { finishedTypingLineOne() && !finishedTypingLineTwo() &&
-                    <span>_</span>
-                  }
-                </h1>
-                <div class={'grid grid-cols-1 sm:grid-cols-7 gap-y-5'}>
-                  <div class={'col-span-5'}>
+              <div class={'grid grid-cols-7 ' +
+                'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
+                <div class={'col-span-5'}>
+                  <div class={'row-span-1'}>
+                    <h1>
+                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                        {lineOne()}
+                      </span>
+                      {
+                        !finishedTypingLineOne() && <span>_</span>
+                      }
+                    </h1>
+                  </div>
+                  <div class={'row-span-1'}>
+                    <h1>
+                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+                        {lineTwo()}
+                      </span>
+                      { finishedTypingLineOne() && !finishedTypingLineTwo() &&
+                        <span>_</span>
+                      }
+                    </h1>
+                  </div>
+                  <div class={'row-span-1'}>
                     <h1>
                       {lineThree()}
                       { finishedTypingLineThree() &&
@@ -1260,11 +1286,13 @@ export default function GridMapSquarePixi(): JSXElement {
                       }
                     </h1>
                   </div>
-                  <div class={'transition-opacity col-span-2 justify-self-center sm:justify-self-end mt-0 sm:-mt-6'}
-                    classList={{
-                      'opacity-0': !finishedTypingLineThree(),
-                      'opacity-100': finishedTypingLineThree(),
-                    }}>
+                </div>
+                <div class={'transition-opacity col-span-2 justify-self-center place-self-end'}
+                  classList={{
+                    'opacity-0': !finishedTypingLineThree(),
+                    'opacity-100': finishedTypingLineThree(),
+                  }}>
+                  <div>
                     <EnterButton onClick={() => startGame()}
                       isDisabled={!(finishedLoading() && finishedTypingLineThree())} />
                   </div>

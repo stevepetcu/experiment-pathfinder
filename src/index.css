@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+    html {
+        @apply bg-slate-800;
+    }
     h1 {
         @apply text-2xl sm:text-3xl md:text-4xl leading-none antialiased text-slate-300;
         text-shadow: -2px 0 0 rgba(2, 6, 23, 0.55), 0 -2px 0 rgba(2, 6, 23, 1);

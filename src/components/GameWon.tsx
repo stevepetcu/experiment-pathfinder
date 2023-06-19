@@ -2,7 +2,7 @@ import {format, parseISO} from 'date-fns';
 import {BiRegularSave} from 'solid-icons/bi';
 import {createEffect, createResource, JSXElement} from 'solid-js';
 import superagent from 'superagent';
-import superAgentRetryDelay from 'superagent-retry-delay';
+import * as superAgentRetryDelay from 'superagent-retry-delay';
 
 import delay from '../utils/Delay';
 import randomInt from '../utils/RandomInt';
