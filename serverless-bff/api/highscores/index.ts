@@ -22,6 +22,7 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
   if (!validationResult.success) {
     const errors = validationResult.error.format();
     console.info(errors);
+    console.info(request.query);
     const limit = errors.limit ?
       {
         limit: ['Parameter must be exactly one integer that is > 0 and < 20.'],
@@ -83,11 +84,13 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
     name: z.string().min(2).max(20),
     timeToComplete: z.number().min(1).max(SMALLINT_MAX_VALUE),
   });
-  const parsedHsReq = CreateHighScoreRequest.safeParse(request.body);
+  const requestBody = JSON.parse(request.body);
+  const parsedHsReq = CreateHighScoreRequest.safeParse(requestBody);
 
   if (!parsedHsReq.success) {
     const errors = parsedHsReq.error.format();
     console.info(errors);
+    console.info(requestBody);
     const name = errors.name ?
       {
         name: errors.name._errors,
@@ -107,7 +110,7 @@ const postRequestHandler = async (request: VercelRequest, response: VercelRespon
 
   try {
     responseBody = await prisma.highScore.create({
-      data: CreateHighScoreRequest.parse(request.body),
+      data: CreateHighScoreRequest.parse(requestBody),
     });
   } catch (error) {
     console.error(error);

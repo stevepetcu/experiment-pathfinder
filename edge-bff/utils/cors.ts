@@ -1,5 +1,3 @@
-import process from 'process';
-
 import {defaultResponseOptions, ResponseOptions} from './response-options';
 
 export const allowCors = (fn: (request: Request, event: never, responseOpts: ResponseOptions) => Promise<Response>) =>

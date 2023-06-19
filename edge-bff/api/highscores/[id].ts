@@ -29,6 +29,7 @@ const getRequestHandler = async (request: Request, responseOpts: ResponseOptions
 
   if (!validationResult.success) {
     console.info(validationResult.error.format());
+    console.info(id);
     return new Response(
       JSON.stringify({
         errors: {
@@ -81,6 +82,7 @@ const patchRequestHandler = async (request: Request, responseOpts: ResponseOptio
 
   if (!validationResult.success) {
     console.info(validationResult.error.format());
+    console.info(id);
     return new Response(
       JSON.stringify({
         errors: {
@@ -102,6 +104,7 @@ const patchRequestHandler = async (request: Request, responseOpts: ResponseOptio
   if (!parsedHsReq.success) {
     const errors = parsedHsReq.error.format();
     console.info(errors);
+    console.info(jsonReqBody);
     const name = errors.name ?
       {
         name: errors.name._errors,

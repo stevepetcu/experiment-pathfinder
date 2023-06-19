@@ -42,6 +42,7 @@ const getRequestHandler = async (request: Request, responseOpts: ResponseOptions
   if (!validationResult.success) {
     const errors = validationResult.error.format();
     console.info(errors);
+    console.info(queryParams);
     const limit = errors.limit ?
       {
         limit: ['Parameter must be exactly one integer that is > 0 and < 20.'],
@@ -108,6 +109,7 @@ const postRequestHandler = async (request: Request, responseOpts: ResponseOption
   if (!parsedHsReq.success) {
     const errors = parsedHsReq.error.format();
     console.info(errors);
+    console.info(jsonReqBody);
     const name = errors.name ?
       {
         name: errors.name._errors,

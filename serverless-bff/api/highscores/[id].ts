@@ -19,6 +19,7 @@ const getRequestHandler = async (request: VercelRequest, response: VercelRespons
 
   if (!validationResult.success) {
     console.info(validationResult.error.format());
+    console.info(id);
     return response.status(404).send({
       errors: {
         error: 'The requested resource does not exist.',
@@ -68,6 +69,7 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
 
   if (!validationResult.success) {
     console.info(validationResult.error.format());
+    console.info(id);
     return response.status(404).send({
       errors: {
         error: 'The requested resource does not exist.',
@@ -78,11 +80,13 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
   const UpdateHighScoreRequest = z.object({
     name: z.string().min(2).max(20),
   });
-  const parsedHsReq = UpdateHighScoreRequest.safeParse(request.body);
+  const requestBody = JSON.parse(request.body);
+  const parsedHsReq = UpdateHighScoreRequest.safeParse(requestBody);
 
   if (!parsedHsReq.success) {
     const errors = parsedHsReq.error.format();
     console.info(errors);
+    console.info(requestBody);
     const name = errors.name ?
       {
         name: errors.name._errors,
@@ -102,7 +106,7 @@ const patchRequestHandler = async (request: VercelRequest, response: VercelRespo
       where: {
         id: schema.parse(id),
       },
-      data: UpdateHighScoreRequest.parse(request.body),
+      data: UpdateHighScoreRequest.parse(requestBody),
     });
 
     responseBody = {
