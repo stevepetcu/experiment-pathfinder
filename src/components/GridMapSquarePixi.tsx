@@ -1111,7 +1111,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   const restartGame = () => {
     // location.reload();
-    console.log('Restarting the game…');
+    console.debug('Restarting the game…');
 
     critterBehaviour = null;
     ghostBehaviour = null;
@@ -1188,7 +1188,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   createEffect(() => {
     if (isGameOver()) {
-      console.log('Stopping characters…');
+      console.debug('Stopping characters…');
       ghosts.forEach((val) => {
         clearTimeout(val.instance.moveTimeout?.tout);
       });
