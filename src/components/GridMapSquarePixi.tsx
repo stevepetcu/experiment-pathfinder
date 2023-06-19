@@ -1117,10 +1117,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
     setFinishedLoading(true);
-
-    // setIsGameStarted(true);
-    // setIsGameWon(true);
-    // setIsGameOver(true);
   });
 
   const destroyPixiApp = () => {
@@ -1129,7 +1125,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   };
 
   const restartGame = () => {
-    // location.reload();
     console.debug('Restarting the game…');
 
     critterBehaviour = null;
@@ -1240,28 +1235,26 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
             isGameWon() &&
             <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
               <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
-              {/*<GameWon playerTimeToComplete={randomInt(30, 60)} restartGameCallback={restartGame}/>*/}
             </div>
           }
           {
             isGameLost() &&
-            <div class={'bg-slate-800 h-full w-full ' +
-              'grid grid-cols-1 content-center z-30 '}>
-              <div class={'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto'}>
-                <div class={'grid grid-cols-1 sm:grid-cols-7 gap-y-5'}>
-                  <div class={'col-span-5'}>
-                    <h1>
-                      {lineGameLost()}
-                      <span classList={{
-                        'animate-pulse-fast': finishedTypingLineGameLost(),
-                      }}>_</span>
-                    </h1>
-                  </div>
-                  <div class={'transition-opacity col-span-2 justify-self-center sm:justify-self-end mt-0 sm:-mt-6'}
-                    classList={{
-                      'opacity-0': !finishedTypingLineGameLost(),
-                      'opacity-100': finishedTypingLineGameLost(),
-                    }}>
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30 '}>
+              <div class={'grid grid-cols-7 w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
+                <div class={'col-span-5 self-end'}>
+                  <h1>
+                    {lineGameLost()}
+                    <span classList={{
+                      'animate-pulse-fast': finishedTypingLineGameLost(),
+                    }}>_</span>
+                  </h1>
+                </div>
+                <div class={'transition-opacity col-span-2 justify-self-center place-self-end'}
+                  classList={{
+                    'opacity-0': !finishedTypingLineGameLost(),
+                    'opacity-100': finishedTypingLineGameLost(),
+                  }}>
+                  <div>
                     <EnterButton onClick={() => restartGame()}
                       isDisabled={!(isGameLost() && finishedTypingLineGameLost())} />
                   </div>
@@ -1271,41 +1264,29 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           }
           {
             (!finishedLoading() || !isGameStarted()) &&
-            <div class={'bg-slate-800 h-full w-full gap-y-5 ' +
-                   'grid grid-cols-1 content-center z-30 '}>
-              <div class={'grid grid-cols-7 ' +
-                'w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
-                <div class={'col-span-5'}>
-                  <div class={'row-span-1'}>
-                    <h1>
-                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                        {lineOne()}
-                      </span>
-                      {
-                        !finishedTypingLineOne() && <span>_</span>
-                      }
-                    </h1>
-                  </div>
-                  <div class={'row-span-1'}>
-                    <h1>
-                      <span style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                        {lineTwo()}
-                      </span>
-                      { finishedTypingLineOne() && !finishedTypingLineTwo() &&
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30 '}>
+              <div class={'grid grid-cols-7 w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
+                <div class={'col-span-5 align-bottom'}>
+                  <h1>
+                    {lineOne()}
+                    {
+                      !finishedTypingLineOne() && <span>_</span>
+                    }
+                  </h1>
+                  <h1>
+                    {lineTwo()}
+                    { finishedTypingLineOne() && !finishedTypingLineTwo() &&
                         <span>_</span>
-                      }
-                    </h1>
-                  </div>
-                  <div class={'row-span-1'}>
-                    <h1>
-                      {lineThree()}
-                      { finishedTypingLineThree() &&
+                    }
+                  </h1>
+                  <h1>
+                    {lineThree()}
+                    { finishedTypingLineThree() &&
                         <span classList={{
                           'animate-pulse-fast': finishedTypingLineThree(),
                         }}>_</span>
-                      }
-                    </h1>
-                  </div>
+                    }
+                  </h1>
                 </div>
                 <div class={'transition-opacity col-span-2 justify-self-center place-self-end'}
                   classList={{
