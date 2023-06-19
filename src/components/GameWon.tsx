@@ -1,11 +1,8 @@
 import {format, parseISO} from 'date-fns';
+import ky from 'ky';
 import {BiRegularSave} from 'solid-icons/bi';
 import {createEffect, createResource, JSXElement} from 'solid-js';
-import superagent from 'superagent';
-import * as superAgentRetryDelay from 'superagent-retry-delay';
 
-import delay from '../utils/Delay';
-import randomInt from '../utils/RandomInt';
 import {formatSeconds} from '../utils/Time';
 import EnterButton from './EnterButton';
 import styles from './GameWon.module.css';
@@ -24,9 +21,6 @@ interface HighScore {
   createdAt: string;
   updatedAt: string;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const superAgent = superAgentRetryDelay(superagent);
 
 const savePlayerName = async (
   playerHighScore: HighScore,
@@ -50,19 +44,16 @@ const savePlayerName = async (
 
   try {
     // Save current score
-    updatedPlayerScore = (
-      await superAgent
-        .patch(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores/${playerHighScore.id}`)
-        .timeout({
-          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
-          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
-        })
-        .retry(
-          3,
-          [400 + randomInt(100, 300), 1800 + randomInt(200, 500), 3500 + randomInt(500, 1000)],
-          [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
-        )
-        .send({name})).body;
+    updatedPlayerScore = await ky
+      .patch(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores/${playerHighScore.id}`, {
+        body: JSON.stringify({name}),
+        timeout: import.meta.env.VITE_BFF_TIMEOUT_RESPONSE,
+        retry: {
+          limit: 4,
+          methods: ['patch'],
+        },
+      })
+      .json();
   } catch (err) {
     // TODO: add a nice modal here.
     isConfirmedRetrySaveName = confirm('We were attacked by goblins and might have lost your name. 😥\n\n' +
@@ -160,40 +151,36 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
 
   try {
     // Save current score
-    currentPlayerScore = (
-      await superagent
-        .post(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
-        .timeout({
-          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
-          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
-        })
-        .send({
+    currentPlayerScore = await ky
+      .post(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`, {
+        body: JSON.stringify({
           name: 'Nameless Hero',
           timeToComplete: currentScore,
-        })).body;
+        }),
+        timeout: import.meta.env.VITE_BFF_TIMEOUT_RESPONSE,
+      })
+      .json();
 
     // We could be super thorough and sort these again,
     // but they're already sorted by the BFF & that's good enough for our use-case.
-    topTenPlayerScores = (
-      await superAgent
-        .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`)
-        .timeout({
-          response: import.meta.env.VITE_SUPERAGENT_TIMEOUT_RESPONSE,
-          deadline: import.meta.env.VITE_SUPERAGENT_TIMEOUT_DEADLINE,
-        })
-        .retry(
-          3,
-          [400 + randomInt(100, 300), 1800 + randomInt(200, 500), 3500 + randomInt(500, 1000)],
-          [408, 413, 429, 500, 502, 503, 504, 521, 522, 524],
-        )
-        .query({
-          limit: 10,
-          offset: 0,
-        })).body;
+    const searchParams = new URLSearchParams();
+    searchParams.set('limit', '10');
+    searchParams.set('offset', '0');
+    topTenPlayerScores = await ky
+      .get(`${import.meta.env.VITE_BFF_DOMAIN}/api/highscores`, {
+        searchParams,
+        timeout: import.meta.env.VITE_BFF_TIMEOUT_RESPONSE,
+        retry: {
+          limit: 4,
+          methods: ['get'],
+        },
+      })
+      .json();
   } catch (err) {
     // Do nothing; we could easily implement a retry button if we had time.
     // For now, we'll simply return the current player's score, and we won't save it.
     // TODO: add a nice retry button.
+    console.error(err);
   }
 
   return {currentPlayerScore, topTenPlayerScores};
@@ -223,14 +210,13 @@ export default function GameWon(props: GameWonProps): JSXElement {
 
   const [playerScoresJsx] = createResource(props.playerTimeToComplete, processPlayerScore);
 
-  createEffect(async () => {
+  createEffect(() => {
     let currentPlayerHsNameInput: HTMLElement | null = null;
     if (playerScoresJsx.state === 'ready') {
       currentPlayerHsNameInput = document.getElementById('current-player-hs-name-input');
 
       if (currentPlayerHsNameInput) {
-        await (delay(100));
-        currentPlayerHsNameInput.focus();
+        setTimeout(() => currentPlayerHsNameInput?.focus(), 100);
       }
     }
   });

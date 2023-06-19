@@ -19,10 +19,10 @@
     "@pixi/filter-color-gradient": "^5.2.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "date-fns": "^2.30.0",
+    "ky": "^0.33.3",
     "pixi.js": "^7.2.4",
     "solid-icons": "^1.0.8",
     "solid-js": "^1.7.6",
-    "superagent": "^8.0.9",
     "superagent-retry-delay": "^2.7.2"
   },
   "devDependencies": {

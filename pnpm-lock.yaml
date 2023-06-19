@@ -16,6 +16,9 @@ dependencies:
   date-fns:
     specifier: ^2.30.0
     version: 2.30.0
+  ky:
+    specifier: ^0.33.3
+    version: 0.33.3
   pixi.js:
     specifier: ^7.2.4
     version: 7.2.4(@pixi/utils@7.2.4)
@@ -25,9 +28,6 @@ dependencies:
   solid-js:
     specifier: ^1.7.6
     version: 1.7.6
-  superagent:
-    specifier: ^8.0.9
-    version: 8.0.9
   superagent-retry-delay:
     specifier: ^2.7.2
     version: 2.7.2(superagent@8.0.9)
@@ -2428,6 +2428,11 @@ packages:
   /known-css-properties@0.24.0:
     resolution: {integrity: sha512-RTSoaUAfLvpR357vWzAz/50Q/BmHfmE6ETSWfutT0AJiw10e6CmcdYRQJlLRd95B53D0Y2aD1jSxD3V3ySF+PA==}
     dev: true
+
+  /ky@0.33.3:
+    resolution: {integrity: sha512-CasD9OCEQSFIam2U8efFK81Yeg8vNMTBUqtMOHlrcWQHqUX3HeCl9Dr31u4toV7emlH8Mymk5+9p0lL6mKb/Xw==}
+    engines: {node: '>=14.16'}
+    dev: false
 
   /levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}

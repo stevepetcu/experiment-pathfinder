@@ -61,8 +61,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   const numberOfCritters = 5;
 
   const numberOfGhosts = 2;
-  // const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
-  const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 1000};
+  const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
+  // const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 1000};
   const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;
@@ -1102,6 +1102,10 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
       .addSubscriber({subscriptionId: player.id, callback: playerUpdaterForGhosts});
 
     setFinishedLoading(true);
+
+    // setIsGameStarted(true);
+    // setIsGameWon(true);
+    // setIsGameOver(true);
   });
 
   const destroyPixiApp = () => {
@@ -1220,7 +1224,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           {
             isGameWon() &&
             <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
-              <GameWon playerTimeToComplete={randomInt(30, 300)} restartGameCallback={restartGame}/>
+              <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
+              {/*<GameWon playerTimeToComplete={randomInt(30, 60)} restartGameCallback={restartGame}/>*/}
             </div>
           }
           {
