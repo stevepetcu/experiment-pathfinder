@@ -1303,8 +1303,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           }
           {
             finishedLoading() && isGameStarted() && !isGameOver() &&
-            <>
-              <div class={'absolute top-5 left-[3%] text-left z-20 ' +
+            <div class={'w-fit m-auto relative'}>
+              <div class={'sticky top-5 left-5 ml-5 mt-5 text-left z-20 w-fit ' +
                 'p-3 bg-slate-700/50 border-2 border-slate-800 ' +
                 'outline-double outline-2 outline-offset-2 outline-slate-700 '}>
                 <div>
@@ -1327,7 +1327,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
               }}>
                 {pixiApp().view as unknown as Element}
               </div>
-            </>
+            </div>
           }
         </div>
       </div>
