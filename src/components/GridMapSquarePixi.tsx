@@ -48,10 +48,6 @@ interface GridMapSquarePixiProps {
 export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXElement {
   // Override vh property, so it works properly on mobile devices with browser navigation menus
   setVh();
-  window.addEventListener('resize', () => {
-    setVh();
-  });
-  // End "Override vh property, so it works properly on mobile devices with browser navigation menus"
 
   // These settings are not user-configurable
   const cellWidth = 45;
@@ -203,6 +199,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     console.debug('Mounting component…');
 
     document.addEventListener('keydown', handleEnter, true);
+    window.addEventListener('resize', setVh);
 
     typeLine(
       lineOneContent,
@@ -1157,8 +1154,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     setIsGameOver(false);
     setIsGameLost(false);
     document.removeEventListener('keydown', handleEnter, true);
+    window.addEventListener('resize', setVh);
     props.restartGameCallback();
-    // destroyPixiApp();
   });
 
   const startGame = () => {
