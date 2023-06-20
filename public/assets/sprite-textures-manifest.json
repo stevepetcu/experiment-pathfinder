@@ -53,163 +53,163 @@
       "name": "player-looking-around",
       "assets": [
         {
-          "name": "north-0",
+          "name": "pla-north-0",
           "srcs": "/assets/character/player/looking-around/north/0.png"
         },
         {
-          "name": "north-1",
+          "name": "pla-north-1",
           "srcs": "/assets/character/player/looking-around/north/2.png"
         },
         {
-          "name": "north-2",
+          "name": "pla-north-2",
           "srcs": "/assets/character/player/looking-around/north/2.png"
         },
         {
-          "name": "north-3",
+          "name": "pla-north-3",
           "srcs": "/assets/character/player/looking-around/north/3.png"
         },
         {
-          "name": "north-4",
+          "name": "pla-north-4",
           "srcs": "/assets/character/player/looking-around/north/4.png"
         },
         {
-          "name": "northeast-0",
+          "name": "pla-northeast-0",
           "srcs": "/assets/character/player/looking-around/northeast/0.png"
         },
         {
-          "name": "northeast-1",
+          "name": "pla-northeast-1",
           "srcs": "/assets/character/player/looking-around/northeast/1.png"
         },
         {
-          "name": "northeast-2",
+          "name": "pla-northeast-2",
           "srcs": "/assets/character/player/looking-around/northeast/2.png"
         },
         {
-          "name": "northeast-3",
+          "name": "pla-northeast-3",
           "srcs": "/assets/character/player/looking-around/northeast/3.png"
         },
         {
-          "name": "northeast-4",
+          "name": "pla-northeast-4",
           "srcs": "/assets/character/player/looking-around/northeast/4.png"
         },
         {
-          "name": "east-0",
+          "name": "pla-east-0",
           "srcs": "/assets/character/player/looking-around/east/0.png"
         },
         {
-          "name": "east-1",
+          "name": "pla-east-1",
           "srcs": "/assets/character/player/looking-around/east/1.png"
         },
         {
-          "name": "east-2",
+          "name": "pla-east-2",
           "srcs": "/assets/character/player/looking-around/east/2.png"
         },
         {
-          "name": "east-3",
+          "name": "pla-east-3",
           "srcs": "/assets/character/player/looking-around/east/3.png"
         },
         {
-          "name": "east-4",
+          "name": "pla-east-4",
           "srcs": "/assets/character/player/looking-around/east/4.png"
         },
         {
-          "name": "southeast-0",
+          "name": "pla-southeast-0",
           "srcs": "/assets/character/player/looking-around/southeast/0.png"
         },
         {
-          "name": "southeast-1",
+          "name": "pla-southeast-1",
           "srcs": "/assets/character/player/looking-around/southeast/1.png"
         },
         {
-          "name": "southeast-2",
+          "name": "pla-southeast-2",
           "srcs": "/assets/character/player/looking-around/southeast/2.png"
         },
         {
-          "name": "southeast-3",
+          "name": "pla-southeast-3",
           "srcs": "/assets/character/player/looking-around/southeast/3.png"
         },
         {
-          "name": "southeast-4",
+          "name": "pla-southeast-4",
           "srcs": "/assets/character/player/looking-around/southeast/4.png"
         },
         {
-          "name": "south-0",
+          "name": "pla-south-0",
           "srcs": "/assets/character/player/looking-around/south/0.png"
         },
         {
-          "name": "south-1",
+          "name": "pla-south-1",
           "srcs": "/assets/character/player/looking-around/south/1.png"
         },
         {
-          "name": "south-2",
+          "name": "pla-south-2",
           "srcs": "/assets/character/player/looking-around/south/2.png"
         },
         {
-          "name": "south-3",
+          "name": "pla-south-3",
           "srcs": "/assets/character/player/looking-around/south/3.png"
         },
         {
-          "name": "south-4",
+          "name": "pla-south-4",
           "srcs": "/assets/character/player/looking-around/south/4.png"
         },
         {
-          "name": "southwest-0",
+          "name": "pla-southwest-0",
           "srcs": "/assets/character/player/looking-around/southwest/0.png"
         },
         {
-          "name": "southwest-1",
+          "name": "pla-southwest-1",
           "srcs": "/assets/character/player/looking-around/southwest/1.png"
         },
         {
-          "name": "southwest-2",
+          "name": "pla-southwest-2",
           "srcs": "/assets/character/player/looking-around/southwest/2.png"
         },
         {
-          "name": "southwest-3",
+          "name": "pla-southwest-3",
           "srcs": "/assets/character/player/looking-around/southwest/3.png"
         },
         {
-          "name": "southwest-4",
+          "name": "pla-southwest-4",
           "srcs": "/assets/character/player/looking-around/southwest/4.png"
         },
         {
-          "name": "west-0",
+          "name": "pla-west-0",
           "srcs": "/assets/character/player/looking-around/west/0.png"
         },
         {
-          "name": "west-1",
+          "name": "pla-west-1",
           "srcs": "/assets/character/player/looking-around/west/1.png"
         },
         {
-          "name": "west-2",
+          "name": "pla-west-2",
           "srcs": "/assets/character/player/looking-around/west/2.png"
         },
         {
-          "name": "west-3",
+          "name": "pla-west-3",
           "srcs": "/assets/character/player/looking-around/west/3.png"
         },
         {
-          "name": "west-4",
+          "name": "pla-west-4",
           "srcs": "/assets/character/player/looking-around/west/4.png"
         },
         {
-          "name": "northwest-0",
+          "name": "pla-northwest-0",
           "srcs": "/assets/character/player/looking-around/northwest/0.png"
         },
         {
-          "name": "northwest-1",
+          "name": "pla-northwest-1",
           "srcs": "/assets/character/player/looking-around/northwest/1.png"
         },
         {
-          "name": "northwest-2",
+          "name": "pla-northwest-2",
           "srcs": "/assets/character/player/looking-around/northwest/2.png"
         },
         {
-          "name": "northwest-3",
+          "name": "pla-northwest-3",
           "srcs": "/assets/character/player/looking-around/northwest/3.png"
         },
         {
-          "name": "northwest-4",
+          "name": "pla-northwest-4",
           "srcs": "/assets/character/player/looking-around/northwest/4.png"
         }
       ]
@@ -218,259 +218,259 @@
       "name": "player-running",
       "assets": [
         {
-          "name": "north-0",
+          "name": "pr-north-0",
           "srcs": "/assets/character/player/running/north/0.png"
         },
         {
-          "name": "north-1",
+          "name": "pr-north-1",
           "srcs": "/assets/character/player/running/north/2.png"
         },
         {
-          "name": "north-2",
+          "name": "pr-north-2",
           "srcs": "/assets/character/player/running/north/2.png"
         },
         {
-          "name": "north-3",
+          "name": "pr-north-3",
           "srcs": "/assets/character/player/running/north/3.png"
         },
         {
-          "name": "north-4",
+          "name": "pr-north-4",
           "srcs": "/assets/character/player/running/north/4.png"
         },
         {
-          "name": "north-5",
+          "name": "pr-north-5",
           "srcs": "/assets/character/player/running/north/5.png"
         },
         {
-          "name": "north-6",
+          "name": "pr-north-6",
           "srcs": "/assets/character/player/running/north/6.png"
         },
         {
-          "name": "north-7",
+          "name": "pr-north-7",
           "srcs": "/assets/character/player/running/north/7.png"
         },
         {
-          "name": "northeast-0",
+          "name": "pr-northeast-0",
           "srcs": "/assets/character/player/running/northeast/0.png"
         },
         {
-          "name": "northeast-1",
+          "name": "pr-northeast-1",
           "srcs": "/assets/character/player/running/northeast/1.png"
         },
         {
-          "name": "northeast-2",
+          "name": "pr-northeast-2",
           "srcs": "/assets/character/player/running/northeast/2.png"
         },
         {
-          "name": "northeast-3",
+          "name": "pr-northeast-3",
           "srcs": "/assets/character/player/running/northeast/3.png"
         },
         {
-          "name": "northeast-4",
+          "name": "pr-northeast-4",
           "srcs": "/assets/character/player/running/northeast/4.png"
         },
         {
-          "name": "northeast-5",
+          "name": "pr-northeast-5",
           "srcs": "/assets/character/player/running/northeast/5.png"
         },
         {
-          "name": "northeast-6",
+          "name": "pr-northeast-6",
           "srcs": "/assets/character/player/running/northeast/6.png"
         },
         {
-          "name": "northeast-7",
+          "name": "pr-northeast-7",
           "srcs": "/assets/character/player/running/northeast/7.png"
         },
         {
-          "name": "east-0",
+          "name": "pr-east-0",
           "srcs": "/assets/character/player/running/east/0.png"
         },
         {
-          "name": "east-1",
+          "name": "pr-east-1",
           "srcs": "/assets/character/player/running/east/1.png"
         },
         {
-          "name": "east-2",
+          "name": "pr-east-2",
           "srcs": "/assets/character/player/running/east/2.png"
         },
         {
-          "name": "east-3",
+          "name": "pr-east-3",
           "srcs": "/assets/character/player/running/east/3.png"
         },
         {
-          "name": "east-4",
+          "name": "pr-east-4",
           "srcs": "/assets/character/player/running/east/4.png"
         },
         {
-          "name": "east-5",
+          "name": "pr-east-5",
           "srcs": "/assets/character/player/running/east/5.png"
         },
         {
-          "name": "east-6",
+          "name": "pr-east-6",
           "srcs": "/assets/character/player/running/east/6.png"
         },
         {
-          "name": "east-7",
+          "name": "pr-east-7",
           "srcs": "/assets/character/player/running/east/7.png"
         },
         {
-          "name": "southeast-0",
+          "name": "pr-southeast-0",
           "srcs": "/assets/character/player/running/southeast/0.png"
         },
         {
-          "name": "southeast-1",
+          "name": "pr-southeast-1",
           "srcs": "/assets/character/player/running/southeast/1.png"
         },
         {
-          "name": "southeast-2",
+          "name": "pr-southeast-2",
           "srcs": "/assets/character/player/running/southeast/2.png"
         },
         {
-          "name": "southeast-3",
+          "name": "pr-southeast-3",
           "srcs": "/assets/character/player/running/southeast/3.png"
         },
         {
-          "name": "southeast-4",
+          "name": "pr-southeast-4",
           "srcs": "/assets/character/player/running/southeast/4.png"
         },
         {
-          "name": "southeast-5",
+          "name": "pr-southeast-5",
           "srcs": "/assets/character/player/running/southeast/5.png"
         },
         {
-          "name": "southeast-6",
+          "name": "pr-southeast-6",
           "srcs": "/assets/character/player/running/southeast/6.png"
         },
         {
-          "name": "southeast-7",
+          "name": "pr-southeast-7",
           "srcs": "/assets/character/player/running/southeast/7.png"
         },
         {
-          "name": "south-0",
+          "name": "pr-south-0",
           "srcs": "/assets/character/player/running/south/0.png"
         },
         {
-          "name": "south-1",
+          "name": "pr-south-1",
           "srcs": "/assets/character/player/running/south/1.png"
         },
         {
-          "name": "south-2",
+          "name": "pr-south-2",
           "srcs": "/assets/character/player/running/south/2.png"
         },
         {
-          "name": "south-3",
+          "name": "pr-south-3",
           "srcs": "/assets/character/player/running/south/3.png"
         },
         {
-          "name": "south-4",
+          "name": "pr-south-4",
           "srcs": "/assets/character/player/running/south/4.png"
         },
         {
-          "name": "south-5",
+          "name": "pr-south-5",
           "srcs": "/assets/character/player/running/south/5.png"
         },
         {
-          "name": "south-6",
+          "name": "pr-south-6",
           "srcs": "/assets/character/player/running/south/6.png"
         },
         {
-          "name": "south-7",
+          "name": "pr-south-7",
           "srcs": "/assets/character/player/running/south/7.png"
         },
         {
-          "name": "southwest-0",
+          "name": "pr-southwest-0",
           "srcs": "/assets/character/player/running/southwest/0.png"
         },
         {
-          "name": "southwest-1",
+          "name": "pr-southwest-1",
           "srcs": "/assets/character/player/running/southwest/1.png"
         },
         {
-          "name": "southwest-2",
+          "name": "pr-southwest-2",
           "srcs": "/assets/character/player/running/southwest/2.png"
         },
         {
-          "name": "southwest-3",
+          "name": "pr-southwest-3",
           "srcs": "/assets/character/player/running/southwest/3.png"
         },
         {
-          "name": "southwest-4",
+          "name": "pr-southwest-4",
           "srcs": "/assets/character/player/running/southwest/4.png"
         },
         {
-          "name": "southwest-5",
+          "name": "pr-southwest-5",
           "srcs": "/assets/character/player/running/southwest/5.png"
         },
         {
-          "name": "southwest-6",
+          "name": "pr-southwest-6",
           "srcs": "/assets/character/player/running/southwest/6.png"
         },
         {
-          "name": "southwest-7",
+          "name": "pr-southwest-7",
           "srcs": "/assets/character/player/running/southwest/7.png"
         },
         {
-          "name": "west-0",
+          "name": "pr-west-0",
           "srcs": "/assets/character/player/running/west/0.png"
         },
         {
-          "name": "west-1",
+          "name": "pr-west-1",
           "srcs": "/assets/character/player/running/west/1.png"
         },
         {
-          "name": "west-2",
+          "name": "pr-west-2",
           "srcs": "/assets/character/player/running/west/2.png"
         },
         {
-          "name": "west-3",
+          "name": "pr-west-3",
           "srcs": "/assets/character/player/running/west/3.png"
         },
         {
-          "name": "west-4",
+          "name": "pr-west-4",
           "srcs": "/assets/character/player/running/west/4.png"
         },
         {
-          "name": "west-5",
+          "name": "pr-west-5",
           "srcs": "/assets/character/player/running/west/5.png"
         },
         {
-          "name": "west-6",
+          "name": "pr-west-6",
           "srcs": "/assets/character/player/running/west/6.png"
         },
         {
-          "name": "west-7",
+          "name": "pr-west-7",
           "srcs": "/assets/character/player/running/west/7.png"
         },
         {
-          "name": "northwest-0",
+          "name": "pr-northwest-0",
           "srcs": "/assets/character/player/running/northwest/0.png"
         },
         {
-          "name": "northwest-1",
+          "name": "pr-northwest-1",
           "srcs": "/assets/character/player/running/northwest/1.png"
         },
         {
-          "name": "northwest-2",
+          "name": "pr-northwest-2",
           "srcs": "/assets/character/player/running/northwest/2.png"
         },
         {
-          "name": "northwest-3",
+          "name": "pr-northwest-3",
           "srcs": "/assets/character/player/running/northwest/3.png"
         },
         {
-          "name": "northwest-4",
+          "name": "pr-northwest-4",
           "srcs": "/assets/character/player/running/northwest/4.png"
         },
         {
-          "name": "northwest-5",
+          "name": "pr-northwest-5",
           "srcs": "/assets/character/player/running/northwest/5.png"
         },
         {
-          "name": "northwest-6",
+          "name": "pr-northwest-6",
           "srcs": "/assets/character/player/running/northwest/6.png"
         },
         {
-          "name": "northwest-7",
+          "name": "pr-northwest-7",
           "srcs": "/assets/character/player/running/northwest/7.png"
         }
       ]
@@ -488,19 +488,19 @@
       "name": "dust",
       "assets": [
         {
-          "name": "frame_00",
+          "name": "dust-frame-00",
           "srcs": "/assets/dust/frame_00.png"
         },
         {
-          "name": "frame_01",
+          "name": "dust-frame-01",
           "srcs": "/assets/dust/frame_01.png"
         },
         {
-          "name": "frame_02",
+          "name": "dust-frame-02",
           "srcs": "/assets/dust/frame_02.png"
         },
         {
-          "name": "frame_03",
+          "name": "dust-frame-03",
           "srcs": "/assets/dust/frame_03.png"
         }
       ]
@@ -509,27 +509,27 @@
       "name": "blobfish-looking-around",
       "assets": [
         {
-          "name": "frame_00",
+          "name": "cla-frame-00",
           "srcs": "/assets/character/blobfish/looking-around/frame-00.png"
         },
         {
-          "name": "frame_01",
+          "name": "cla-frame-01",
           "srcs": "/assets/character/blobfish/looking-around/frame-01.png"
         },
         {
-          "name": "frame_02",
+          "name": "cla-frame-02",
           "srcs": "/assets/character/blobfish/looking-around/frame-02.png"
         },
         {
-          "name": "frame_03",
+          "name": "cla-frame-03",
           "srcs": "/assets/character/blobfish/looking-around/frame-03.png"
         },
         {
-          "name": "frame_04",
+          "name": "cla-frame-04",
           "srcs": "/assets/character/blobfish/looking-around/frame-04.png"
         },
         {
-          "name": "frame_05",
+          "name": "cla-frame-05",
           "srcs": "/assets/character/blobfish/looking-around/frame-05.png"
         }
       ]
@@ -538,35 +538,35 @@
       "name": "blobfish-running",
       "assets": [
         {
-          "name": "north_00",
+          "name": "cr-north-00",
           "srcs": "/assets/character/blobfish/running/north/frame-00.png"
         },
         {
-          "name": "north_01",
+          "name": "cr-north-01",
           "srcs": "/assets/character/blobfish/running/north/frame-01.png"
         },
         {
-          "name": "north_02",
+          "name": "cr-north-02",
           "srcs": "/assets/character/blobfish/running/north/frame-02.png"
         },
         {
-          "name": "north_03",
+          "name": "cr-north-03",
           "srcs": "/assets/character/blobfish/running/north/frame-03.png"
         },
         {
-          "name": "south_00",
+          "name": "cr-south-00",
           "srcs": "/assets/character/blobfish/running/south/frame-00.png"
         },
         {
-          "name": "south_01",
+          "name": "cr-south-01",
           "srcs": "/assets/character/blobfish/running/south/frame-01.png"
         },
         {
-          "name": "south_02",
+          "name": "cr-south-02",
           "srcs": "/assets/character/blobfish/running/south/frame-02.png"
         },
         {
-          "name": "south_03",
+          "name": "cr-south-03",
           "srcs": "/assets/character/blobfish/running/south/frame-03.png"
         }
       ]
@@ -575,55 +575,55 @@
       "name": "ghost-looking-around",
       "assets": [
         {
-          "name": "frame_00",
+          "name": "gla-frame-00",
           "srcs": "/assets/character/ghost/looking-around/frame-00.png"
         },
         {
-          "name": "frame_01",
+          "name": "gla-frame-01",
           "srcs": "/assets/character/ghost/looking-around/frame-01.png"
         },
         {
-          "name": "frame_02",
+          "name": "gla-frame-02",
           "srcs": "/assets/character/ghost/looking-around/frame-02.png"
         },
         {
-          "name": "frame_03",
+          "name": "gla-frame-03",
           "srcs": "/assets/character/ghost/looking-around/frame-03.png"
         },
         {
-          "name": "frame_04",
+          "name": "gla-frame-04",
           "srcs": "/assets/character/ghost/looking-around/frame-04.png"
         },
         {
-          "name": "frame_05",
+          "name": "gla-frame-05",
           "srcs": "/assets/character/ghost/looking-around/frame-05.png"
         },
         {
-          "name": "frame_06",
+          "name": "gla-frame-06",
           "srcs": "/assets/character/ghost/looking-around/frame-06.png"
         },
         {
-          "name": "frame_07",
+          "name": "gla-frame-07",
           "srcs": "/assets/character/ghost/looking-around/frame-07.png"
         },
         {
-          "name": "frame_08",
+          "name": "gla-frame-08",
           "srcs": "/assets/character/ghost/looking-around/frame-08.png"
         },
         {
-          "name": "frame_09",
+          "name": "gla-frame-09",
           "srcs": "/assets/character/ghost/looking-around/frame-09.png"
         },
         {
-          "name": "frame_10",
+          "name": "gla-frame-10",
           "srcs": "/assets/character/ghost/looking-around/frame-10.png"
         },
         {
-          "name": "frame_11",
+          "name": "gla-frame-11",
           "srcs": "/assets/character/ghost/looking-around/frame-11.png"
         },
         {
-          "name": "frame_12",
+          "name": "gla-frame-12",
           "srcs": "/assets/character/ghost/looking-around/frame-12.png"
         }
       ]
@@ -632,27 +632,27 @@
       "name": "ghost-running",
       "assets": [
         {
-          "name": "running_00",
+          "name": "gr-running-00",
           "srcs": "/assets/character/ghost/running/frame-00.png"
         },
         {
-          "name": "running_01",
+          "name": "gr-running-01",
           "srcs": "/assets/character/ghost/running/frame-01.png"
         },
         {
-          "name": "running_02",
+          "name": "gr-running-02",
           "srcs": "/assets/character/ghost/running/frame-02.png"
         },
         {
-          "name": "running_03",
+          "name": "gr-running-03",
           "srcs": "/assets/character/ghost/running/frame-03.png"
         },
         {
-          "name": "running_04",
+          "name": "gr-running-04",
           "srcs": "/assets/character/ghost/running/frame-04.png"
         },
         {
-          "name": "running_05",
+          "name": "gr-running-05",
           "srcs": "/assets/character/ghost/running/frame-05.png"
         }
       ]

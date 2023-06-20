@@ -47,6 +47,7 @@ interface GridMapSquarePixiProps {
 }
 export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXElement {
   // Override vh property, so it works properly on mobile devices with browser navigation menus
+  // TODO: for some reason this doesn't work on Chrome iOS but it works on Safari iOS and desktop browsers.
   setVh();
 
   // These settings are not user-configurable
@@ -58,6 +59,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   const numberOfGhosts = 2;
   const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
+  // const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 500};
   const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;
@@ -256,10 +258,15 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     const container = new Container();
 
     // Add textures:
-    // TODO: sort out the caching issue;
-    //  not sure if it's to do w/ files having the same names + it doesn't account for their path, or what.
-    await Assets.init({manifest: '/assets/sprite-textures-manifest.json'});
+    console.log(Assets.cache);
+    if (!Assets.cache.has('/assets/sprite-textures-manifest.json')) {
+      await Assets.init({manifest: '/assets/sprite-textures-manifest.json'});
+    }
+
     const tileTextures = await Assets.loadBundle('tiles');
+    const playerLookingAroundTextures = await Assets.loadBundle('player-looking-around');
+    const playerRunningTextures = await Assets.loadBundle('player-running');
+    const dustTextures = await Assets.loadBundle('dust');
 
     gridCells().map(row => {
       row.map(cell => {
@@ -306,8 +313,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     const light3 = new Graphics();
     playerCoordObservers.push(light, light2, light3);
 
-    const playerLookingAroundTextures = await Assets.loadBundle('player-looking-around');
-    const playerRunningTextures = await Assets.loadBundle('player-running');
     playerTextures = getPlayerTextures(playerLookingAroundTextures, playerRunningTextures);
     playerSprite = new AnimatedSprite(playerTextures.lookingAround.south, true);
     playerSprite.animationSpeed = playerBaseLookingAroundFps;
@@ -320,12 +325,11 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
     container.addChild(playerSprite);
 
-    const dustTextures = await Assets.loadBundle('dust');
     const dustSprite = new AnimatedSprite([
-      dustTextures['frame_00'],
-      dustTextures['frame_01'],
-      dustTextures['frame_02'],
-      dustTextures['frame_03'],
+      dustTextures['dust-frame-00'],
+      dustTextures['dust-frame-01'],
+      dustTextures['dust-frame-02'],
+      dustTextures['dust-frame-03'],
       Texture.EMPTY,
     ], true);
     dustSprite.animationSpeed = 5 / 10;
