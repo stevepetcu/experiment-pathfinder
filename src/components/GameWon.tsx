@@ -6,6 +6,7 @@ import {createEffect, createResource, JSXElement} from 'solid-js';
 import {formatSeconds} from '../utils/Time';
 import EnterButton from './EnterButton';
 import styles from './GameWon.module.css';
+import {logError} from '../utils/Console';
 
 interface GameWonProps {
   playerTimeToComplete: number,
@@ -180,7 +181,7 @@ const fetchAndSortHighScores = async (currentScore: number): Promise<{
     // Do nothing; we could easily implement a retry button if we had time.
     // For now, we'll simply return the current player's score, and we won't save it.
     // TODO: add a nice retry button.
-    console.error(err);
+    logError(err);
   }
 
   return {currentPlayerScore, topTenPlayerScores};

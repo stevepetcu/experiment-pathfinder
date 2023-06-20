@@ -1,4 +1,5 @@
 
+import {logDebug} from '../utils/Console';
 import {Coords} from './Coords';
 import {Corridor, CorridorVector} from './Corridor';
 import {Room, RoomDto} from './Room';
@@ -82,7 +83,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
 
   const placeRooms = async (rooms: Room[]) => {
     for (let i = 0; i < rooms.length; i++) {
-      console.debug('Placing:', rooms[i]);
+      logDebug('Placing:', rooms[i]);
 
       const room = rooms[i];
       const roomCoords: Coords = room.roomDto.topLeft;
@@ -96,7 +97,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
             _this.cells[roomY][roomX].status = CellStatus.EMPTY;
             _this.cells[roomY][roomX].roomId = room.roomDto.id;
           } else {
-            console.debug('Tried to place empty cell at: ', cell);
+            logDebug('Tried to place empty cell at: ', cell);
           }
         }
       }
@@ -114,7 +115,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     for (let i = 0; i < horizontalCorridors.length; i++) {
       const corridor = horizontalCorridors[i];
       let currentY = corridor.startCoords.y;
-      console.debug('Placing:', corridor);
+      logDebug('Placing:', corridor);
       while (currentY < corridor.startCoords.y + corridor.width) {
         let currentX = corridor.startCoords.x + 1;
         while (currentX < corridor.endCoords.x) {
@@ -123,7 +124,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
             _this.cells[currentY][currentX].status = CellStatus.EMPTY;
             _this.cells[currentY][currentX].roomId = corridor.id;
           } else {
-            console.debug('Tried to place empty cell at: ', currentCell);
+            logDebug('Tried to place empty cell at: ', currentCell);
           }
           currentX++;
         }
@@ -134,7 +135,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     for (let i = 0; i < verticalCorridors.length; i++) {
       const corridor = verticalCorridors[i];
       let currentX = corridor.startCoords.x;
-      console.debug('Placing:', corridor);
+      logDebug('Placing:', corridor);
       while (currentX < corridor.startCoords.x + corridor.width) {
         let currentY = corridor.startCoords.y - 1;
         while (currentY > corridor.endCoords.y) {
@@ -143,7 +144,7 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
             _this.cells[currentY][currentX].status = CellStatus.EMPTY;
             _this.cells[currentY][currentX].roomId = corridor.id;
           } else {
-            console.debug('Tried to place empty cell at: ', currentCell);
+            logDebug('Tried to place empty cell at: ', currentCell);
           }
           currentY--;
         }

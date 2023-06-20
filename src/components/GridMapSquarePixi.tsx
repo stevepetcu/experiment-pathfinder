@@ -31,6 +31,7 @@ import {
 } from '../models/Map';
 import { getPathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
+import {logDebug, logError} from '../utils/Console';
 import delay from '../utils/Delay';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
@@ -198,7 +199,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   };
 
   onMount(async () => {
-    console.debug('Mounting component…');
+    logDebug('Mounting component…');
 
     document.addEventListener('keydown', handleEnter, true);
     window.addEventListener('resize', setVh);
@@ -258,7 +259,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     const container = new Container();
 
     // Add textures:
-    console.log(Assets.cache);
     if (!Assets.cache.has('/assets/sprite-textures-manifest.json')) {
       await Assets.init({manifest: '/assets/sprite-textures-manifest.json'});
     }
@@ -753,7 +753,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           ghostSprite.alpha = 1;
           if (distanceToPlayer < spotlightRadius * 0.1) {
             if (ghostInstance.instance.isAlive) {
-              console.debug('Player caught.');
+              logDebug('Player caught.');
               player.setIsAlive(false);
               setIsGameLost(true);
               typeLine(
@@ -790,7 +790,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           if (distanceToPlayer < spotlightRadius * 0.7) {
             ghostSprite.alpha = 1;
             if (distanceToPlayer < spotlightRadius * 0.1 && ghost.instance.isAlive) {
-              console.debug('Player caught.');
+              logDebug('Player caught.');
               player.setIsAlive(false);
               setIsGameLost(true);
               typeLine(
@@ -967,8 +967,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           player,
         );
       } catch(err) {
-        console.error('An error occurred: ');
-        console.error(err);
+        logError('An error occurred: ');
+        logError(err);
       }
     };
     // End "Ghosts stuff"
@@ -1120,7 +1120,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   });
 
   const restartGame = () => {
-    console.debug('Restarting the game…');
+    logDebug('Restarting the game…');
 
     critterBehaviour = null;
     ghostBehaviour = null;
@@ -1152,7 +1152,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   };
 
   onCleanup(() => {
-    console.debug('Cleaning up…');
+    logDebug('Cleaning up…');
 
     setIsGameStarted(false);
     setIsGameOver(false);
@@ -1209,7 +1209,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   createEffect(() => {
     if (isGameOver()) {
-      console.debug('Stopping characters…');
+      logDebug('Stopping characters…');
       ghosts.forEach((val) => {
         clearTimeout(val.instance.moveTimeout?.tout);
       });

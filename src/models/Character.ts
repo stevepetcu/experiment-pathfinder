@@ -1,5 +1,6 @@
 import {UUID} from 'crypto';
 
+import {logDebug} from '../utils/Console';
 import {calcVectorFromPointAToPointB} from '../utils/DistanceCalculator';
 import randomInt from '../utils/RandomInt';
 import {SimpleSequenceMessageBroker} from '../utils/SimpleSequenceMessageBroker';
@@ -208,10 +209,10 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     }
 
     const nextStep = path.pop();
-    console.debug('Next step: ', nextStep);
+    logDebug('Next step: ', nextStep);
 
     if (nextStep === undefined) {
-      console.debug('Unreachable, or reached position!');
+      logDebug('Unreachable, or reached position!');
       clearTimeout(tout);
       // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
@@ -219,7 +220,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     }
 
     if (isAt(nextStep)) {
-      console.debug('Already at location.');
+      logDebug('Already at location.');
       clearTimeout(tout);
       // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
@@ -227,7 +228,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     }
 
     if (!nextStep.isAccessible()) {
-      console.debug('Inaccessible cell.');
+      logDebug('Inaccessible cell.');
       clearTimeout(tout);
       // console.log('Unreachable, or reached position!', 'Cleared timeout.');
       stopMoving();
