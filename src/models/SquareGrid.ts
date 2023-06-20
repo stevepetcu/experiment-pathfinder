@@ -25,6 +25,7 @@ export interface Grid {
   placeCorridors: (corridors: Corridor[]) => Promise<boolean>;
   setStatusForCellAt: (status: CellStatus, x: number, y: number) => GridCell;
   getCellAt: (x: number, y: number) => GridCell;
+  destroy: () => void;
 }
 
 const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id']) => {
@@ -38,8 +39,11 @@ const getCell = (x: number, y: number, status: CellStatus, roomId?: RoomDto['id'
   return _this;
 };
 
+const OUT_OF_BOUNDS_CELL = getCell(-1, -1, CellStatus.OUT_OF_BOUNDS);
+
 export const getSquareGrid = async (width: number): Promise<Grid> => {
   const cells: GridCell[][] = [];
+
 
   // Fill with obstacles. TODO: optimise with room placing
   for (let y = 0; y < width; y++) {
@@ -71,7 +75,9 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
       return _this.cells[y][x];
     }
 
-    return getCell(x, y, CellStatus.OUT_OF_BOUNDS);
+    OUT_OF_BOUNDS_CELL.x = x;
+    OUT_OF_BOUNDS_CELL.y = y;
+    return OUT_OF_BOUNDS_CELL;
   };
 
   const placeRooms = async (rooms: Room[]) => {
@@ -148,8 +154,17 @@ export const getSquareGrid = async (width: number): Promise<Grid> => {
     return true;
   };
 
+  const destroy = () => {
+    _this.cells = [];
+  };
+
   const _this = {
-    cells, placeRooms, placeCorridors, setStatusForCellAt, getCellAt,
+    cells,
+    placeRooms,
+    placeCorridors,
+    setStatusForCellAt,
+    getCellAt,
+    destroy,
   };
 
   return _this;
@@ -162,7 +177,9 @@ export const getEmptyGrid = (): Grid => {
   const setStatusForCellAt = (status: CellStatus, x: Coords['x'], y: Coords['y']) =>
     getCell(x, y, CellStatus.OUT_OF_BOUNDS);
 
-  const getCellAt = (x: number, y: number): GridCell => getCell(x, y, CellStatus.OUT_OF_BOUNDS);
+  const getCellAt = (_x: number, _y: number): GridCell => OUT_OF_BOUNDS_CELL;
+
+  const destroy = () => {return; };
 
   return {
     cells: [[]],
@@ -170,5 +187,6 @@ export const getEmptyGrid = (): Grid => {
     placeCorridors,
     setStatusForCellAt,
     getCellAt,
+    destroy,
   };
 };

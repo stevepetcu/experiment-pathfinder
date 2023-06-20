@@ -126,7 +126,8 @@ export interface Pathfinder {
     center: Coords,
     radius: number,
     avoidTheCenter: boolean
-  ): Coords | null
+  ): Coords | null;
+  destroy: () => void;
 }
 
 export const getPathfinder = (
@@ -173,8 +174,8 @@ export const getPathfinder = (
           });
         } else {
           // Avoid the cell and its neighbours by increasing their weight.
+          const pathfinderCellToAvoid = _this.cells[avoidCell.y][avoidCell.x];
 
-          const pathfinderCellToAvoid = getPathfinderCell(avoidCell, avoidCell.isAccessible() ? 1 : 0);
           const cellToAvoidNeighbourCoords = pathfinderCellToAvoid.getNeighbourCoordinates();
           const avoidCoords = cellToAvoidNeighbourCoords.sides.concat(cellToAvoidNeighbourCoords.corners);
 
@@ -327,6 +328,12 @@ export const getPathfinder = (
     return {x, y};
   };
 
+  const destroy = () => {
+    _this.cells = [];
+    _this.dirtyCells = [];
+    _this.heap = null;
+  };
+
   const _this = {
     cells,
     dirtyCells,
@@ -336,6 +343,7 @@ export const getPathfinder = (
     getGridCellAt,
     options: pfOptions,
     generateObstacleAwareRandomCoordsInAreaAround,
+    destroy,
   };
 
   return _this;
@@ -359,5 +367,6 @@ export const getEmptyPathfinder = (grid: Grid): Pathfinder => {
     ): Coords | null {
       return null;
     },
+    destroy: () => { return; },
   };
 };

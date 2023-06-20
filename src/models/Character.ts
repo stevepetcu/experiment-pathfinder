@@ -51,6 +51,7 @@ export interface Character {
   willMeet: (otherCharacter: Character) => boolean | undefined;
   currentPath: GridCell[];
   stopMoving: () => void;
+  destroy: () => void;
 }
 
 // TODO: rename this thing to "Character" and "getCharacter" etc.?
@@ -249,6 +250,12 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     return { spawn, tout };
   };
 
+  const destroy = () => {
+    _this.pathfinder.destroy();
+    _this.pathfinder = null;
+    ssmb = null;
+  };
+
   // TODO: refactor models – most of them don't need a _this (unless I need to call another object on _this object).
   const currentPath: GridCell[] = [];
   const _this = {
@@ -268,6 +275,7 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
     willMeet,
     currentPath,
     stopMoving,
+    destroy,
   };
 
   updateGameState();

@@ -1,22 +1,33 @@
-import type {Component} from 'solid-js';
-import {createSignal, Show} from 'solid-js';
+import type {Component, JSXElement} from 'solid-js';
+import {createSignal, onMount, Show} from 'solid-js';
 
 import GridMapSquarePixi from './components/GridMapSquarePixi';
 
 const App: Component = () => {
   const [isGameRestarted, setIsGameRestarted] = createSignal(false);
+  const [gameScreen, setGameScreen] = createSignal<JSXElement>();
 
   const restartGame = () => {
-    // Dirty hack to refresh the component because the scope creep on this project is getting real.
+    // Dirty hack to free the memory because the scope creep on this project is getting real.
     setIsGameRestarted(true);
+    setGameScreen(null);
 
-    setTimeout(() => setIsGameRestarted(false), 50);
+    setTimeout(() => {
+      setIsGameRestarted(false);
+      setGameScreen(<GridMapSquarePixi restartGameCallback={restartGame} />);
+    }, 300);
   };
 
+  onMount(() => {
+    setGameScreen(<GridMapSquarePixi restartGameCallback={restartGame} />);
+  });
+
   return (
-    <Show when={!isGameRestarted()}><div id='my-app' class={'container m-0 font-vt323'}>
-      <GridMapSquarePixi restartGameCallback={restartGame} />
-    </div></Show>
+    <Show when={!isGameRestarted() && gameScreen()}>
+      <div id='my-app' class={'m-0 font-vt323'}>
+        {gameScreen()}
+      </div>
+    </Show>
   );
 };
 

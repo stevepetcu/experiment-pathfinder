@@ -29,7 +29,7 @@ import {
   generateRandomCoordsInRandomRoom, generateRandomCoordsInSpecificRoom,
   generateRooms,
 } from '../models/Map';
-import {getEmptyPathfinder, getPathfinder, Pathfinder} from '../models/Pathfinder';
+import { getPathfinder} from '../models/Pathfinder';
 import {CellStatus, getEmptyGrid, getSquareGrid, GridCell} from '../models/SquareGrid';
 import delay from '../utils/Delay';
 import {calcDiagonalDistance} from '../utils/DistanceCalculator';
@@ -62,7 +62,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   const numberOfGhosts = 2;
   const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
-  // const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 1000};
   const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;
@@ -94,9 +93,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   const [gridCells, setGridCells] = createSignal<GridCell[][]>([]);
 
-  const emptyGrid = getEmptyGrid();
-  const [pathfinder, setPathfinder] = createSignal<Pathfinder>(getEmptyPathfinder(emptyGrid));
-
+  let generatedGrid = getEmptyGrid();
   const [gridScrollableContainer, setGridScrollableContainer] = createSignal<Element | null>();
 
   const [pixiApp] = createSignal<Application>(
@@ -227,7 +224,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
       },
     );
     // Create the actual grid:
-    const generatedGrid = await getSquareGrid(mapWidth);
+    generatedGrid = await getSquareGrid(mapWidth);
 
     // Generate and place rooms:
     const startRooms = Date.now();
@@ -249,11 +246,13 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     setTimeToPlaceCorridors(endCorridors - startCorridors);
 
     // Set the player, the grid, and the pathfinder
-    setPathfinder(getPathfinder(generatedGrid, {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true}));
-
-    // TODO: arrange the code a bit better. These guys have to be created after we've added the subscription to
+    // TODO: arrange the code a bit better. The critters have to be created after we've added the subscription to
     //  the message broker, lest they get born "inanimate". I must figure out why things break if I move this below.
-    player = getCharacter(pathfinder(), randomPlayerStartingCoords, playerSSMB);
+    player = getCharacter(
+      getPathfinder(generatedGrid, {allowDiagonalMovement: true, returnClosestCellOnPathFailure: true}),
+      randomPlayerStartingCoords,
+      playerSSMB,
+    );
 
     setGridCells(generatedGrid.cells);
 
@@ -1119,27 +1118,34 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     setFinishedLoading(true);
   });
 
-  const destroyPixiApp = () => {
-    console.debug('Destroying app…');
-    pixiApp().destroy(true, {children: true});
-  };
-
   const restartGame = () => {
     console.debug('Restarting the game…');
 
     critterBehaviour = null;
     ghostBehaviour = null;
+
+    player.destroy();
     player = null;
     ghosts.forEach((val) => {
       clearTimeout(val.instance.moveTimeout?.tout);
+      val.instance.destroy();
       val = null;
     });
     critters.forEach((val) => {
       clearTimeout(val.moveTimeout?.tout);
+      val.destroy();
       val = null;
     });
 
-    destroyPixiApp();
+    generatedGrid.destroy();
+
+    pixiApp().destroy(
+      true,
+      {
+        children: true,
+        baseTexture: true,
+      },
+    );
 
     props.restartGameCallback();
   };
@@ -1151,7 +1157,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
     setIsGameOver(false);
     setIsGameLost(false);
     document.removeEventListener('keydown', handleEnter, true);
-
+    props.restartGameCallback();
     // destroyPixiApp();
   });
 
@@ -1213,7 +1219,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   });
 
   return (
-    <div class={'text-center'}>
+    <div class={'grid grid-col-1 justify-items-center'}>
       <Show when={false}> {/*TODO: these will be in the "debug" menu.*/}
         <Show when={hasPlacedRooms()} fallback={<h2>Generating {mapWidth}x{mapWidth} map…</h2>}>
           {roomsJsx}
@@ -1223,7 +1229,27 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
         </Show>
         <h2>The player moves at a fixed speed of 1 block every {playerSpeed.ms}ms.</h2>
       </Show>
-      <div class={'relative inline-block'}>
+      <div class={'relative inline-block'}
+        style={{
+          'max-width': `${mapWidth * cellWidth}px`,
+        }}>
+        <div class={'absolute top-7 left-7 text-left z-10 w-fit ' +
+          'p-3 bg-slate-700/50 border-2 border-slate-800 ' +
+          'outline-double outline-2 outline-offset-2 outline-slate-700 '}>
+          <div>
+            <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}
+              style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+              Time played: {formatSeconds(playTime())}
+            </p>
+          </div>
+          <div class={'flex flex-wrap gap-x-3 gap-y-4 items-center max-w-[330px] sm:max-w-sm md:max-w-md'}>
+            <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}
+              style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
+              Fish left: {numberOfCritters - numberOfCrittersEaten()}
+            </p>
+            {buffsJsx()}
+          </div>
+        </div>
         <div id="grid-scrollable-container"
           class={`inline-block w-screen ${styles.heightScreen}`}
           classList={{
@@ -1233,13 +1259,13 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
         >
           {
             isGameWon() &&
-            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30'}>
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-20 relative'}>
               <GameWon playerTimeToComplete={playTime()} restartGameCallback={restartGame}/>
             </div>
           }
           {
             isGameLost() &&
-            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30 '}>
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-20 relative'}>
               <div class={'grid grid-cols-7 w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
                 <div class={'col-span-5 self-end'}>
                   <h1>
@@ -1264,7 +1290,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           }
           {
             (!finishedLoading() || !isGameStarted()) &&
-            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-30 '}>
+            <div class={'bg-slate-800 h-full w-full grid grid-cols-1 content-center z-20 relative'}>
               <div class={'grid grid-cols-7 w-4/5 sm:w-3/4 lg:w-1/2 text-left m-auto gap-y-5'}>
                 <div class={'col-span-5 align-bottom'}>
                   <h1>
@@ -1303,30 +1329,8 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
           }
           {
             finishedLoading() && isGameStarted() && !isGameOver() &&
-            <div class={'w-fit m-auto relative'}>
-              <div class={'sticky top-5 left-5 ml-5 mt-5 text-left z-20 w-fit ' +
-                'p-3 bg-slate-700/50 border-2 border-slate-800 ' +
-                'outline-double outline-2 outline-offset-2 outline-slate-700 '}>
-                <div>
-                  <p class={'text-lg sm:text-2xl md:text-3xl leading-normal text-white'}
-                    style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                    Time played: {formatSeconds(playTime())}
-                  </p>
-                </div>
-                <div class={'flex flex-wrap gap-x-3 gap-y-4 items-center max-w-[330px] sm:max-w-sm md:max-w-md'}>
-                  <p class={'text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-white'}
-                    style={{'text-shadow':'-2px 0px 0px rgba(2, 6, 23, 0.55), 0px -2px 0px rgba(2, 6, 23, 1)'}}>
-                    Fish left: {numberOfCritters - numberOfCrittersEaten()}
-                  </p>
-                  {buffsJsx()}
-                </div>
-              </div>
-              <div style={{
-                width: `${mapWidth * cellWidth}px`,
-                height: `${mapWidth * cellWidth}px`,
-              }}>
-                {pixiApp().view as unknown as Element}
-              </div>
+            <div>
+              {pixiApp().view as unknown as Element}
             </div>
           }
         </div>
