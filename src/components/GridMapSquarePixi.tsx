@@ -1121,20 +1121,17 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
   const restartGame = () => {
     logDebug('Restarting the game…');
 
-    critterBehaviour = null;
-    ghostBehaviour = null;
+    critterBehaviour = () => {};
+    ghostBehaviour = () => {};
 
     player.destroy();
-    player = null;
     ghosts.forEach((val) => {
       clearTimeout(val.instance.moveTimeout?.tout);
       val.instance.destroy();
-      val = null;
     });
     critters.forEach((val) => {
       clearTimeout(val.moveTimeout?.tout);
       val.destroy();
-      val = null;
     });
 
     generatedGrid.destroy();

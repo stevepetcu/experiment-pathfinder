@@ -253,8 +253,6 @@ export const getCharacter = (pathfinder: Pathfinder, startingCoords: Coords,
 
   const destroy = () => {
     _this.pathfinder.destroy();
-    _this.pathfinder = null;
-    ssmb = null;
   };
 
   // TODO: refactor models – most of them don't need a _this (unless I need to call another object on _this object).
