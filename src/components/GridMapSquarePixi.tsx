@@ -60,7 +60,6 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
 
   const numberOfGhosts = 2;
   const initialGhostMsWaitUntilSpawn = {base: 27000, jitter: 6000};
-  // const initialGhostMsWaitUntilSpawn = {base: 1000, jitter: 500};
   const subsequentGhostMsWaitUntilSpawn = {base: 12000, jitter: 5000};
 
   const baseSpotLightRadius = cellWidth * 6;

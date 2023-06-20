@@ -3,10 +3,11 @@ import ky from 'ky';
 import {BiRegularSave} from 'solid-icons/bi';
 import {createEffect, createResource, JSXElement} from 'solid-js';
 
+import {logError} from '../utils/Console';
 import {formatSeconds} from '../utils/Time';
+import Credits from './Credits';
 import EnterButton from './EnterButton';
 import styles from './GameWon.module.css';
-import {logError} from '../utils/Console';
 
 interface GameWonProps {
   playerTimeToComplete: number,
@@ -267,13 +268,7 @@ export default function GameWon(props: GameWonProps): JSXElement {
         }
       </div>
       <div class={'pt-5'}>
-        <h2 class={'mb-3'}>Credits</h2>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
-        <p>Lorem ipsum dolor sit amet: <a href={'#'} target={'_blank'} rel={'noopener,nofollow'}>foo bar baz</a></p>
+        <Credits/>
       </div>
       <div class={'grid grid-cols-2 gap-y-5 divide-slate-400 pt-5'}>
         <div class={'flex'}>
