@@ -1,5 +1,6 @@
 import type {Component, JSXElement} from 'solid-js';
 import {createSignal, onMount, Show} from 'solid-js';
+import { HttpHeader } from 'solid-start/server';
 
 import GridMapSquarePixi from './components/GridMapSquarePixi';
 
@@ -23,11 +24,14 @@ const App: Component = () => {
   });
 
   return (
-    <Show when={!isGameRestarted() && gameScreen()}>
-      <div id='my-app' class={'m-0 font-vt323'}>
-        {gameScreen()}
-      </div>
-    </Show>
+    <>
+      <HttpHeader name={'my-header'} value={'bruv'}/>
+      <Show when={!isGameRestarted() && gameScreen()}>
+        <div id='my-app' class={'m-0 font-vt323'}>
+          {gameScreen()}
+        </div>
+      </Show>
+    </>
   );
 };
 
