@@ -13,5 +13,6 @@ describe('fix-edge-uuid-format', () => {
 
   test('returns the value that was passed in when it was already formatted properly', () => {
     expect(fixEdgeUuidFormat(properlyFormattedUUID)).toBe(properlyFormattedUUID);
+    expect(false).toBe(true);
   });
 });
