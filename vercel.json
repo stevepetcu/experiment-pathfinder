@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors https://www.stefanpetcu.com/ http://localhost:3000/; default-src 'self'; connect-src 'self' https://experiment-pathfinder-edge-bff.vercel.app/ data:; img-src 'self' data:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src blob:"
+          "value": "frame-ancestors https://www.stefanpetcu.com/ http://localhost:3000/; default-src 'self'; connect-src 'self' https://experiment-pathfinder-edge-bff.vercel.app/ https://experiment-pathfinder-serverless-bff.vercel.app/ data:; img-src 'self' data:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src blob:"
         },
         {
           "key": "X-Content-Type-Options",
