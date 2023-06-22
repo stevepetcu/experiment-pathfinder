@@ -6,7 +6,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "jest && vite build",
+    "build": "pnpm run test && vite build",
     "serve": "vite preview",
     "lint": "eslint ./**/*.{js,ts,tsx}",
     "lint:fix": "npm run lint -- --fix",
