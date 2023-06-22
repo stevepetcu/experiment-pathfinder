@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "pnpm run test && pnpm run vercel build",
+    "build": "pnpm run test",
     "test": "jest",
     "generateMigrations": "drizzle-kit generate:mysql --out drizzle --schema database/highscores.ts",
     "runMigrations": ""
