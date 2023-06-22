@@ -29,5 +29,6 @@ describe('RandomInt', () => {
     const randomIntInsaneParamOrder = randomInt(max, min);
 
     expect(randomIntSaneParamOrder).toBe(randomIntInsaneParamOrder);
+    expect(true).toBe(false);
   });
 });
