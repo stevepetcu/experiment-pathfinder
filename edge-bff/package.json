@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest && tsc",
+    "build": "npm run test && tsc",
+    "test": "jest",
     "generateMigrations": "drizzle-kit generate:mysql --out drizzle --schema database/highscores.ts",
     "runMigrations": ""
   },
