@@ -2,7 +2,7 @@ import {describe, expect, jest, test} from '@jest/globals';
 
 import randomInt from '../utils/RandomInt';
 
-describe('RandomInt', () => {
+describe('Property-based tests for RandomInt', () => {
   test('returns an integer with a value between "min" inclusive and "max" exclusive', () => {
     const min = randomInt(-99999, 0);
     const max = randomInt(0, 99999);
