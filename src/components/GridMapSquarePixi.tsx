@@ -1304,7 +1304,7 @@ export default function GridMapSquarePixi(props: GridMapSquarePixiProps): JSXEle
                   </h1>
                   <h1>
                     {lineThree()}
-                    { finishedTypingLineThree() &&
+                    { finishedTypingLineOne() && finishedTypingLineTwo() &&
                         <span classList={{
                           'animate-pulse-fast': finishedTypingLineThree(),
                         }}>_</span>
